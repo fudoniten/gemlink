@@ -23,6 +23,7 @@
   (with-out-str (pprint o)))
 
 (defn load-ssl-context
+  "Loads an SSL context from a keystore file using the provided password."
   [^String keystore-path ^String password]
   (let [ks (KeyStore/getInstance "PKCS12")]
     (with-open [ks-stream (FileInputStream. keystore-path)]
@@ -38,6 +39,7 @@
   (get-body   [_]))
 
 (defn success
+  "Creates a successful response with the given MIME type and body."
   [^String mime-type ^String body]
   (reify Response
     (get-status [_] 20)
@@ -45,6 +47,7 @@
     (get-body   [_] body)))
 
 (defn bad-request-error
+  "Creates a response indicating a bad request with the given message."
   [^String message]
   (reify Response
     (get-status [_] 59)
@@ -52,15 +55,20 @@
     (get-body   [_] message)))
 
 (defn unknown-server-error
+  "Creates a response indicating an unknown server error with the given message."
   [^String message]
   (reify Response
     (get-status [_] 40)
     (get-header [_] "unknown error")
     (get-body   [_] message)))
 
-(defn response? [o] (satisfies? Response o))
+(defn response? 
+  "Checks if the given object satisfies the Response protocol."
+  [o] 
+  (satisfies? Response o))
 
 (defn serve-requests
+  "Listens for incoming requests on the server socket and handles them using the provided handler."
   [{:keys [logger]} ^Socket server-sock handler]
   (let [running?   (atom true)]
     (log/info! logger "listening on server socket for incoming requests...")
@@ -82,6 +90,7 @@
       (.start))))
 
 (defn base-handler
+  "Processes a client connection, reading the request and writing the response."
   [handler {:keys [logger]}]
   (fn [client]
     (log/info! logger "opening streams...")
@@ -121,6 +130,7 @@
           (.close client))))))
 
 (defn process-url
+  "Parses the request line into a URI and passes it to the handler."
   [handler]
   (fn [{:keys [request-line] :as req}]
     (try
@@ -129,6 +139,7 @@
         (bad-request-error (format "invalid url: %s" request-line))))))
 
 (defn log-requests
+  "Logs incoming requests using the provided logger."
   [handler {:keys [logger]}]
   (fn [req]
     (log/debug! logger "#####\n# REQUEST\n#####")
@@ -136,6 +147,7 @@
     (handler req)))
 
 (defn log-responses
+  "Logs outgoing responses using the provided logger."
   [handler {:keys [logger]}]
   (fn [req]
     (let [resp (handler req)]
@@ -144,12 +156,14 @@
       resp)))
 
 (defn fold-middleware
+  "Composes a list of middleware functions into a single middleware function."
   "Take a list of middleware functions (-> handler (-> req resp)) and return a middleware function."
   ([] (fn [handler] handler))
   ([middleware] middleware)
   ([middleware & rest] (middleware (fold-middleware rest))))
 
 (defn route-matcher
+  "Creates a function that matches requests based on the given route."
   [route]
   (fn [{remaining-path :remaining-path :as req}]
     (when (nil? remaining-path)
@@ -159,12 +173,14 @@
       nil)))
 
 (defn apply-match
+  "Applies the first matching predicate-handler pair from the predicate map to the object."
   [pred-map o]
   (let [handler (some (fn [[pred handler]] (when (pred o) handler))
                       pred-map)]
     (handler o)))
 
 (defn create-handler
+  "Creates a request handler from the given configuration and subroutes."
   [{:keys [handler middleware]} subroutes]
   (let [mw-fn (fold-middleware (reverse middleware))
         route-map (map (fn [route & cfg]
@@ -178,6 +194,7 @@
       (fn [req] (apply-match route-map req)))))
 
 (defn start-server
+  "Starts the server on the specified port using the provided SSL context and handler."
   [{:keys [logger ssl-context port] :as ctx} handler]
   (let [server-sock (.createServerSocket (.getServerSocketFactory ssl-context) port)
         stop-chan (chan)]
