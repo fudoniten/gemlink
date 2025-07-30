@@ -193,7 +193,9 @@
   [pred-map o]
   (let [handler (some (fn [[pred handler]] (when (pred o) handler))
                       pred-map)]
-    (handler o)))
+    (if handler
+      (handler o)
+      (throw (ex-info "no match found" {:target o})))))
 
 (defn create-handler
   "Creates a request handler from the given configuration and subroutes."

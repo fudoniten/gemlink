@@ -24,7 +24,7 @@
 
 (deftest test-base-handler
   (let [out-stream (ByteArrayOutputStream.)
-        logger (log/print-logger :debug)
+        logger (log/print-logger :fatal)
         handler (base-handler (fn [_] (success "Hello, Gemini!")) {:logger logger})
         socket (mock-socket "gemini://example.com\r\n" out-stream)]
     (testing "successfully request simple page"
@@ -35,7 +35,7 @@
         (is (= (second lines) "Hello, Gemini!")))))
 
   (let [out-stream (ByteArrayOutputStream.)
-        logger (log/print-logger :debug)
+        logger (log/print-logger :fatal)
         handler (base-handler (fn [_] (bad-request-error "Invalid request")) {:logger logger})
         socket (mock-socket "invalid-request\r\n" out-stream)]
     (testing "handle invalid request"
@@ -46,7 +46,7 @@
         (is (= (second lines) "Invalid request")))))
 
   (let [out-stream (ByteArrayOutputStream.)
-        logger (log/print-logger :debug)
+        logger (log/print-logger :fatal)
         handler (base-handler (fn [_] (throw (Exception. "Handler error"))) {:logger logger})
         socket (mock-socket "gemini://example.com\r\n" out-stream)]
     (testing "handle handler error"
@@ -56,7 +56,7 @@
         (is (= (first lines) "40 unknown server error")))))
 
   (let [out-stream (ByteArrayOutputStream.)
-        logger (log/print-logger :debug)
+        logger (log/print-logger :fatal)
         handler (base-handler (fn [_] "Not a response") {:logger logger})
         socket (mock-socket "gemini://example.com\r\n" out-stream)]
     (testing "handle unknown handler error"
@@ -96,6 +96,6 @@
       (is (thrown? Exception (apply-match pred-map :d))))
 
     (testing "empty predicate map"
-      (is (nil? (apply-match {} :a))))))
+      (is (thrown? Exception (apply-match {} :a))))))
 
 (run-tests)
