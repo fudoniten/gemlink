@@ -152,7 +152,7 @@
       (do (log/error! logger "request missing uri, can't extract path, aborting!")
           (unknown-server-error "server misconfigured"))
       (handler (assoc req
-                      :remaining-path (.getPath uri)
+                      :remaining-path (rest (str/split (.getPath uri) #"/"))
                       :full-path      (.getPath uri))))))
 
 (defn log-requests
@@ -191,17 +191,14 @@
   ([middleware & rest] (middleware (fold-middleware rest))))
 
 (defn route-matcher
-  "Creates a function that matches requests based on the given route."
-  [route]
+  "Creates a function that matches requests based on the given route segments."
+  [route-segments]
   (fn [{remaining-path :remaining-path :as req}]
     (when (nil? remaining-path)
-      (ex-info "failed to match path: :remaining-path unset" {:route route}))
-    (if (str/starts-with? remaining-path route)
-      (assoc req :remaining-path
-             (let [remaining (subs remaining-path (count route))]
-               (if (= remaining "")
-                 nil
-                 remaining)))
+      (throw (ex-info "failed to match path: :remaining-path unset" {:route route-segments})))
+    (if (and (seq remaining-path)
+             (= (take (count route-segments) remaining-path) route-segments))
+      (assoc req :remaining-path (drop (count route-segments) remaining-path))
       nil)))
 
 (defn apply-match

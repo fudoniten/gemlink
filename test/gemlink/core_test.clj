@@ -66,7 +66,7 @@
         (is (= (first lines) "40 unknown handler error"))))))
 
 (deftest test-route-matcher
-  (let [matcher (route-matcher "/test")]
+  (let [matcher (route-matcher ["test"])]
 
     (testing "matching route"
       (let [req {:remaining-path "/test/path"}
@@ -82,7 +82,7 @@
       (let [req {:remaining-path nil}]
         (is (thrown? Exception (matcher req))))))
 
-  (let [matcher (route-matcher "/")]
+  (let [matcher (route-matcher [])]
 
     (testing "match root route"
       (let [req {:remaining-path "/"}
