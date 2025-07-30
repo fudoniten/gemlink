@@ -196,8 +196,7 @@
   (fn [{remaining-path :remaining-path :as req}]
     (when (nil? remaining-path)
       (throw (ex-info "failed to match path: :remaining-path unset" {:route route-segments})))
-    (if (and (seq remaining-path)
-             (= (take (count route-segments) remaining-path) route-segments))
+    (if (= (take (count route-segments) remaining-path) route-segments)
       (assoc req :remaining-path (drop (count route-segments) remaining-path))
       (throw (ex-info "path not found" {:remaining-path remaining-path})))))
 
