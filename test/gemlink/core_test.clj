@@ -82,4 +82,20 @@
       (let [req {:remaining-path nil}]
         (is (thrown? Exception (matcher req)))))))
 
+(deftest test-apply-match
+  (let [pred-map {#(= % :a) (fn [_] "Matched A")
+                  #(= % :b) (fn [_] "Matched B")
+                  #(= % :c) (fn [_] "Matched C")}]
+
+    (testing "matching predicate"
+      (is (= (apply-match pred-map :a) "Matched A"))
+      (is (= (apply-match pred-map :b) "Matched B"))
+      (is (= (apply-match pred-map :c) "Matched C")))
+
+    (testing "non-matching predicate"
+      (is (nil? (apply-match pred-map :d))))
+
+    (testing "empty predicate map"
+      (is (nil? (apply-match {} :a))))))
+
 (run-tests)
