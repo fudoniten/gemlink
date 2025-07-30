@@ -199,7 +199,7 @@
     (if (and (seq remaining-path)
              (= (take (count route-segments) remaining-path) route-segments))
       (assoc req :remaining-path (drop (count route-segments) remaining-path))
-      nil)))
+      (throw (ex-info "path not found" {:remaining-path remaining-path})))))
 
 (defn apply-match
   "Applies the first matching predicate-handler pair from the predicate map to the object."
