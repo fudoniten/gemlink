@@ -98,4 +98,27 @@
     (testing "empty predicate map"
       (is (thrown? Exception (apply-match {} :a))))))
 
+(deftest test-create-handler
+  (let [logger (log/print-logger :fatal)
+        success-handler (fn [_] (success "Root handler"))
+        subroute-handler (fn [_] (success "Subroute handler"))
+        handler (create-handler {:logger logger} ["/" success-handler
+                                                  "/sub" subroute-handler])]
+
+    (testing "root route"
+      (let [req {:remaining-path "/"}
+            response (handler req)]
+        (is (= (get-status response) 20))
+        (is (= (get-body response) "Root handler"))))
+
+    (testing "subroute"
+      (let [req {:remaining-path "/sub"}
+            response (handler req)]
+        (is (= (get-status response) 20))
+        (is (= (get-body response) "Subroute handler"))))
+
+    (testing "non-matching route"
+      (let [req {:remaining-path "/unknown"}]
+        (is (thrown? Exception (handler req)))))))
+
 (run-tests)
