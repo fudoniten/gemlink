@@ -32,9 +32,8 @@
       (let [output (.toString out-stream)
             lines (str/split output #"\r\n")]
         (is (= (first lines) "20 text/gemini"))
-        (is (= (second lines) "Hello, Gemini!"))))))
+        (is (= (second lines) "Hello, Gemini!")))))
 
-(deftest test-base-handler-invalid-request
   (let [out-stream (ByteArrayOutputStream.)
         logger (log/print-logger :debug)
         handler (base-handler (fn [_] (bad-request-error "Invalid request")) {:logger logger})
@@ -44,9 +43,8 @@
       (let [output (.toString out-stream)
             lines (str/split output #"\r\n")]
         (is (= (first lines) "59 bad request"))
-        (is (= (second lines) "Invalid request"))))))
+        (is (= (second lines) "Invalid request")))))
 
-(deftest test-base-handler-handler-error
   (let [out-stream (ByteArrayOutputStream.)
         logger (log/print-logger :debug)
         handler (base-handler (fn [_] (throw (Exception. "Handler error"))) {:logger logger})
