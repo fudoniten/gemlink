@@ -53,9 +53,8 @@
       (handler socket)
       (let [output (.toString out-stream)
             lines (str/split output #"\r\n")]
-        (is (= (first lines) "40 unknown server error"))))))
+        (is (= (first lines) "40 unknown server error")))))
 
-(deftest test-base-handler-unknown-handler-error
   (let [out-stream (ByteArrayOutputStream.)
         logger (log/print-logger :debug)
         handler (base-handler (fn [_] "Not a response") {:logger logger})
