@@ -65,4 +65,21 @@
             lines (str/split output #"\r\n")]
         (is (= (first lines) "40 unknown handler error"))))))
 
+(deftest test-route-matcher
+  (let [matcher (route-matcher "/test")]
+
+    (testing "matching route"
+      (let [req {:remaining-path "/test/path"}
+            result (matcher req)]
+        (is (= (:remaining-path result) "/path"))))
+
+    (testing "non-matching route"
+      (let [req {:remaining-path "/other/path"}
+            result (matcher req)]
+        (is (nil? result))))
+
+    (testing "nil remaining-path"
+      (let [req {:remaining-path nil}]
+        (is (thrown? Exception (matcher req)))))))
+
 (run-tests)
