@@ -185,7 +185,7 @@
     (when (nil? remaining-path)
       (ex-info "failed to match path: :remaining-path unset" {:route route}))
     (if (str/starts-with? remaining-path route)
-      (assoc req :remaining-path (str/replace-first remaining-path route ""))
+      (assoc req :remaining-path (subs remaining-path (count route)))
       nil)))
 
 (defn apply-match
