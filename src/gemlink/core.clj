@@ -221,7 +221,11 @@
                        subroutes)]
     (if handler
       (mw-fn handler)
-      (fn [req] (apply-match route-map req)))))
+      (fn [req]
+        (let [matched-handler (apply-match route-map req)]
+          (if matched-handler
+            (mw-fn matched-handler)
+            (throw (ex-info "match not found" {:target req}))))))))
 
 (defn start-server
   "Starts a Gemini server on the specified port using the provided SSL context and handler."
