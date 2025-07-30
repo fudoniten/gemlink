@@ -69,12 +69,12 @@
   (let [matcher (route-matcher ["test"])]
 
     (testing "matching route"
-      (let [req {:remaining-path "/test/path"}
+      (let [req {:remaining-path ["test" "path"]}
             result (matcher req)]
-        (is (= (:remaining-path result) "/path"))))
+        (is (= (:remaining-path result) ["path"]))))
 
     (testing "non-matching route"
-      (let [req {:remaining-path "/other/path"}
+      (let [req {:remaining-path ["other" "path"]}
             result (matcher req)]
         (is (nil? result))))
 
@@ -85,12 +85,12 @@
   (let [matcher (route-matcher [])]
 
     (testing "match root route"
-      (let [req {:remaining-path "/"}
+      (let [req {:remaining-path []}
             result (matcher req)]
-        (is (= (:remaining-path result) nil))))
+        (is (= (:remaining-path result) []))))
 
     (testing "missing sub path"
-      (let [req {:remaining-path "/nonexistent"}]
+      (let [req {:remaining-path ["nonexistent"]}]
         (is (nil? (matcher req)))))))
 
 (deftest test-apply-match
@@ -113,23 +113,23 @@
   (let [logger (log/print-logger :fatal)
         success-handler (fn [_] (success "Root handler"))
         subroute-handler (fn [_] (success "Subroute handler"))
-        handler (create-handler {:logger logger} ["/" success-handler
-                                                  "/sub" subroute-handler])]
+        handler (create-handler {:logger logger} [[] success-handler
+                                                  ["sub"] subroute-handler])]
 
     (testing "root route"
-      (let [req {:remaining-path "/"}
+      (let [req {:remaining-path []}
             response (handler req)]
         (is (= (get-status response) 20))
         (is (= (get-body response) "Root handler"))))
 
     (testing "subroute"
-      (let [req {:remaining-path "/sub"}
+      (let [req {:remaining-path ["sub"]}
             response (handler req)]
         (is (= (get-status response) 20))
         (is (= (get-body response) "Subroute handler"))))
 
     (testing "non-matching route"
-      (let [req {:remaining-path "/unknown"}]
+      (let [req {:remaining-path ["unknown"]}]
         (is (thrown? Exception (handler req)))))))
 
 (run-tests)
