@@ -1,23 +1,21 @@
 (ns gemlink.core-test
-  (:require [gemlink.core :as sut]
-            [clojure.test :refer [deftest is testing run-tests]]))
-
-(run-tests)
-(ns gemlink.core-test
-  (:require [clojure.test :refer :all]
-            [gemlink.core :refer :all]
+  (:require [gemlink.core :refer :all]
+            [gemlink.logging :as log]
+            [clojure.test :refer [deftest is testing run-tests]]
             [clojure.string :as str])
-  (:import (java.net Socket)
-           (java.io ByteArrayInputStream ByteArrayOutputStream)))
+  (:import (java.net InetAddress)
+           (java.io ByteArrayInputStream ByteArrayOutputStream)
+           (javax.net.ssl SSLSocket)))
 
-(defn mock-socket [input]
-  (let [in-stream (ByteArrayInputStream. (.getBytes input))
-        out-stream (ByteArrayOutputStream.)]
-    (proxy [Socket] []
+(defn mock-socket [input out-stream]
+  (let [in-stream (ByteArrayInputStream. (.getBytes input))]
+    (proxy [SSLSocket] []
       (getInputStream [] in-stream)
       (getOutputStream [] out-stream)
       (close [] nil)
-      (getInetAddress [] (proxy [java.net.InetAddress] []))
+      (startHandshake [] nil)
+      (shutdownOutput [] nil)
+      (getInetAddress [] (InetAddress/getByName "127.0.0.1"))
       (getPort [] 12345)
       (getLocalPort [] 12345)
       (getSession [] (proxy [javax.net.ssl.SSLSession] []
@@ -25,12 +23,15 @@
                        (getCipherSuite [] "TLS_RSA_WITH_AES_128_CBC_SHA"))))))
 
 (deftest test-base-handler
-  (let [logger (atom [])
-        log-fn (fn [level msg] (swap! logger conj [level msg]))
-        handler (base-handler (fn [_] (success "Hello, Gemini!")) {:logger log-fn})
-        socket (mock-socket "gemini://example.com\r\n")]
-    (handler socket)
-    (let [output (str/join "\n" @logger)]
-      (is (str/includes? output "request: gemini://example.com"))
-      (is (str/includes? output "20 text/gemini"))
-      (is (str/includes? output "Hello, Gemini!")))))
+  (let [out-stream (ByteArrayOutputStream.)
+        logger (log/print-logger :debug)
+        handler (base-handler (fn [_] (success "Hello, Gemini!")) {:logger logger})
+        socket (mock-socket "gemini://example.com\r\n" out-stream)]
+    (testing "successfully request simple page"
+      (handler socket)
+      (let [output (.toString out-stream)
+            lines (str/split output #"\r\n")]
+        (is (= (first lines) "20 text/gemini"))
+        (is (= (second lines) "Hello, Gemini!"))))))
+
+(run-tests)
