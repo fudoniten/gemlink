@@ -34,4 +34,27 @@
         (is (= (first lines) "20 text/gemini"))
         (is (= (second lines) "Hello, Gemini!"))))))
 
+(deftest test-base-handler-invalid-request
+  (let [out-stream (ByteArrayOutputStream.)
+        logger (log/print-logger :debug)
+        handler (base-handler (fn [_] (bad-request-error "Invalid request")) {:logger logger})
+        socket (mock-socket "invalid-request\r\n" out-stream)]
+    (testing "handle invalid request"
+      (handler socket)
+      (let [output (.toString out-stream)
+            lines (str/split output #"\r\n")]
+        (is (= (first lines) "59 bad request"))
+        (is (= (second lines) "Invalid request"))))))
+
+(deftest test-base-handler-handler-error
+  (let [out-stream (ByteArrayOutputStream.)
+        logger (log/print-logger :debug)
+        handler (base-handler (fn [_] (throw (Exception. "Handler error"))) {:logger logger})
+        socket (mock-socket "gemini://example.com\r\n" out-stream)]
+    (testing "handle handler error"
+      (handler socket)
+      (let [output (.toString out-stream)
+            lines (str/split output #"\r\n")]
+        (is (= (first lines) "40 unknown server error"))))))
+
 (run-tests)
