@@ -80,7 +80,18 @@
 
     (testing "nil remaining-path"
       (let [req {:remaining-path nil}]
-        (is (thrown? Exception (matcher req)))))))
+        (is (thrown? Exception (matcher req))))))
+
+  (let [matcher (route-matcher "/")]
+
+    (testing "match root route"
+      (let [req {:remaining-path "/"}
+            result (matcher req)]
+        (is (= (:remaining-path result) nil))))
+
+    (testing "missing sub path"
+      (let [req {:remaining-path "/nonexistent"}]
+        (is (nil? (matcher req)))))))
 
 (deftest test-apply-match
   (let [pred-map {#(= % :a) (fn [_] "Matched A")
