@@ -172,6 +172,18 @@
       (log/debug! logger resp)
       resp)))
 
+(defn ensure-return
+  "Catch all exceptions, log them, and ensure something is returned to the client."
+  [handler {:keys [logger]}]
+  (fn [req]
+    (try
+      (handler req)
+      (catch Exception e
+        (log/error! logger (format "error serving request: %e"
+                                   (.getMessage e)))
+        (log/debug! logger (with-out-str (print-stack-trace e)))
+        (unknown-server-error "unknown server error")))))
+
 (defn fold-middleware
   "Take a list of middleware functions (-> handler (-> req resp)) and return a middleware function."
   ([] (fn [handler] handler))
@@ -195,7 +207,7 @@
                       pred-map)]
     (if handler
       (handler o)
-      (throw (ex-info "no match found" {:target o})))))
+      (throw (ex-info "match not found" {:target o})))))
 
 (defn create-handler
   "Creates a request handler from the given configuration and subroutes."
