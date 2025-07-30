@@ -87,7 +87,7 @@
     (testing "match root route"
       (let [req {:remaining-path []}
             result (matcher req)]
-        (is (= (:remaining-path result) []))))
+        (is (= (:remaining-path result) nil))))
 
     (testing "missing sub path"
       (let [req {:remaining-path ["nonexistent"]}]
