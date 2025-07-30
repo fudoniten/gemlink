@@ -6,17 +6,21 @@
    [clojure.string :as str]
    [gemlink.logging :as log])
   (:import
+
    (java.io
     BufferedReader
     FileInputStream
     InputStreamReader
     OutputStreamWriter)
+
    (java.net
     Socket
     SocketException
     URI
     URISyntaxException)
+
    (java.security KeyStore)
+
    (javax.net.ssl KeyManagerFactory SSLContext)))
 
 (defn pretty-format [o]
@@ -39,8 +43,9 @@
   (get-body   [_]))
 
 (defn success
-  "Creates a successful response with the given MIME type and body."
-  [^String mime-type ^String body]
+  "Creates a successful response with the given body and optional MIME type."
+  [^String body & {:keys [mime-type]
+                   :or   {mime-type "text/gemini"}}]
   (reify Response
     (get-status [_] 20)
     (get-header [_] mime-type)
@@ -63,7 +68,7 @@
     (get-body   [_] message)))
 
 (defn response? 
-  "Checks if the given object satisfies the Response protocol."
+  "Checks if the given object is a Response."
   [o] 
   (satisfies? Response o))
 
@@ -74,11 +79,11 @@
     (log/info! logger "listening on server socket for incoming requests...")
     (doto (Thread.
            (fn []
-             (log/info! logger "request thread listening...")
+             (log/debug! logger "request thread listening...")
              (while @running?
                (try
                  (let [^Socket client (.accept server-sock)]
-                   (log/info! logger "handling request...")
+                   (log/debug! logger "handling request...")
                    (future (handler client)))
                  (catch SocketException _
                    (log/info! logger "socket closed, shutting down listener...")
@@ -90,13 +95,14 @@
       (.start))))
 
 (defn base-handler
-  "Processes a client connection, reading the request and writing the response."
+  "Basic Gemini handler, taking a socket, reading the request, and calling the
+  supplied handler."
   [handler {:keys [logger]}]
   (fn [client]
-    (log/info! logger "opening streams...")
+    (log/debug! logger "opening streams...")
     (let [in  (-> client (.getInputStream) (InputStreamReader.) (BufferedReader.))
           out (-> client (.getOutputStream) (OutputStreamWriter.))]
-      (log/info! logger "streams open!")
+      (log/debug! logger "streams open!")
       (try
         (.startHandshake client)
         (let [request-line (.readLine in)
@@ -130,7 +136,7 @@
           (.close client))))))
 
 (defn process-url
-  "Parses the request line into a URI and passes it to the handler."
+  "Parses the request line into a URI and adds it to the request."
   [handler]
   (fn [{:keys [request-line] :as req}]
     (try
@@ -138,8 +144,19 @@
       (catch URISyntaxException _
         (bad-request-error (format "invalid url: %s" request-line))))))
 
+(defn extract-path
+  "Extract the URI path from :uri for routing."
+  [handler {:keys [logger]}]
+  (fn [{:keys [uri] :as req}]
+    (if-not uri
+      (do (log/error! logger "request missing uri, can't extract path, aborting!")
+          (unknown-server-error "server misconfigured"))
+      (handler (assoc req
+                      :remaining-path (.getPath uri)
+                      :full-path      (.getPath uri))))))
+
 (defn log-requests
-  "Logs incoming requests using the provided logger."
+  "Logs incoming requests using the provided logger, at debug level."
   [handler {:keys [logger]}]
   (fn [req]
     (log/debug! logger "#####\n# REQUEST\n#####")
@@ -147,7 +164,7 @@
     (handler req)))
 
 (defn log-responses
-  "Logs outgoing responses using the provided logger."
+  "Logs outgoing responses using the provided logger, at debug level."
   [handler {:keys [logger]}]
   (fn [req]
     (let [resp (handler req)]
@@ -156,7 +173,6 @@
       resp)))
 
 (defn fold-middleware
-  "Composes a list of middleware functions into a single middleware function."
   "Take a list of middleware functions (-> handler (-> req resp)) and return a middleware function."
   ([] (fn [handler] handler))
   ([middleware] middleware)
@@ -194,16 +210,16 @@
       (fn [req] (apply-match route-map req)))))
 
 (defn start-server
-  "Starts the server on the specified port using the provided SSL context and handler."
+  "Starts a Gemini server on the specified port using the provided SSL context and handler."
   [{:keys [logger ssl-context port] :as ctx} handler]
   (let [server-sock (.createServerSocket (.getServerSocketFactory ssl-context) port)
         stop-chan (chan)]
-    (log/info! logger (format "gemlink listening on port %s" port))
+    (log/info! logger (format "gemlink server listening on port %s" port))
     (serve-requests ctx server-sock handler)
     (go (<! stop-chan)
         (log/info! logger (format "shutting down gemlink listener on port %s" port))
         (try
           (.close server-sock)
           (catch Exception e
-            (log/error! logger (format "failed to close server socket: %s" (.getMessage e))))))
+            (log/error! logger (format "failed to close gemlink server socket: %s" (.getMessage e))))))
     stop-chan))
