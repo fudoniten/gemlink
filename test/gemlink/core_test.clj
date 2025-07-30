@@ -93,7 +93,7 @@
       (is (= (apply-match pred-map :c) "Matched C")))
 
     (testing "non-matching predicate"
-      (is (nil? (apply-match pred-map :d))))
+      (is (thrown? Exception (apply-match pred-map :d))))
 
     (testing "empty predicate map"
       (is (nil? (apply-match {} :a))))))
