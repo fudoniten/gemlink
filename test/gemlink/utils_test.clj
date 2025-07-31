@@ -28,4 +28,22 @@
              :else 0)
            4)))
 
+(deftest test-pretty-format
+  (testing "pretty-format"
+    (is (string? (pretty-format {:a 1 :b 2})))
+    (is (re-find #":a 1" (pretty-format {:a 1 :b 2})))))
+
+(deftest test-split-path
+  (testing "split-path"
+    (is (= (split-path "/a/b/c") ["a" "b" "c"]))
+    (is (= (split-path "/a//b/c/") ["a" "b" "c"]))
+    (is (= (split-path "") []))))
+
+(deftest test-parse-route-config
+  (testing "parse-route-config"
+    (is (= (parse-route-config "/a/b" {:handler :handler})
+           {"a" {"b" {:handler :handler}}}))
+    (is (= (parse-route-config "/a" {:handler :handler} "/b" {:handler :handler2})
+           {"a" {:handler :handler, :children ({"b" {:handler :handler2}})}}))))
+
 (run-tests)

@@ -6,7 +6,7 @@
    [clojure.string :as str]
 
    [gemlink.logging :as log]
-   [gemlink.utils :refer [cond-let]])
+   [gemlink.utils :refer [cond-let pretty-format split-path parse-route-config]])
   (:import
 
    (java.io
@@ -25,8 +25,6 @@
 
    (javax.net.ssl KeyManagerFactory SSLContext)))
 
-(defn pretty-format [o]
-  (with-out-str (pprint o)))
 
 (defn load-ssl-context
   "Loads an SSL context from a keystore file using the provided password."
@@ -200,13 +198,6 @@
   ([middleware] middleware)
   ([middleware & rest] (middleware (fold-middleware rest))))
 
-(defn split-path
-  [path]
-  (if (seq path)
-    path
-    (->> (str/split path #"/")
-         (remove empty?)
-         vec)))
 
 (defn route-matcher
   "Given a route configuration, return a function from request -> response."
@@ -227,21 +218,6 @@
               (let [wrapped-handler (mw-fn (get path-handlers next))]
                 (wrapped-handler (assoc req :remaining-path rest))))))))))
 
-(defn parse-route-config
-  [path & subroute-cfg]
-  (let [[this & remaining] (split-path path)]
-    ;; If this is a nested path (eg. /one/two) then the top path
-    ;; element should just point at the next (with the same subroutes).
-    (if remaining
-      {this {:children (parse-route-config remaining subroute-cfg)}}
-      ;; The first element after the current path MAY be a config map.
-      ;; Otherwise, it'll be the first path.
-      (let [[maybe-cfg & maybe-subroutes] subroute-cfg
-            [cfg subroutes] (if (map? maybe-cfg)
-                              [maybe-cfg maybe-subroutes]
-                              [{} subroute-cfg])]
-        {this (assoc cfg :children (map parse-route-config
-                                        subroutes))}))))
 
 (defn start-server
   "Starts a Gemini server on the specified port using the provided SSL context and handler."
