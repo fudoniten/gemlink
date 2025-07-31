@@ -4,7 +4,9 @@
    [clojure.pprint :refer [pprint]]
    [clojure.stacktrace :refer [print-stack-trace]]
    [clojure.string :as str]
-   [gemlink.logging :as log])
+
+   [gemlink.logging :as log]
+   [gemlink.utils :refer [cond-let]])
   (:import
 
    (java.io
@@ -65,6 +67,14 @@
   (reify Response
     (get-status [_] 40)
     (get-header [_] "unknown error")
+    (get-body   [_] message)))
+
+(defn not-found-error
+  "Creates a response indicating that the requested resource was not found."
+  [^String message]
+  (reify Response
+    (get-status [_] 51)
+    (get-header [_] "not found")
     (get-body   [_] message)))
 
 (defn response? 
@@ -190,43 +200,48 @@
   ([middleware] middleware)
   ([middleware & rest] (middleware (fold-middleware rest))))
 
+(defn split-path
+  [path]
+  (if (seq path)
+    path
+    (->> (str/split path #"/")
+         (remove empty?)
+         vec)))
+
 (defn route-matcher
-  "Creates a function that matches requests based on the given route segments."
-  [route-segments]
-  (fn [{remaining-path :remaining-path :as req}]
-    (when (nil? remaining-path)
-      (throw (ex-info "failed to match path: :remaining-path unset" {:route route-segments})))
-    (if (and (seq remaining-path)
-             (= (take (count route-segments) remaining-path) route-segments))
-      (assoc req :remaining-path (drop (count route-segments) remaining-path))
-      (throw (ex-info "path not found" {:remaining-path remaining-path})))))
-
-(defn apply-match
-  "Applies the first matching predicate-handler pair from the predicate map to the object."
-  [pred-map o]
-  (let [handler (some (fn [[pred handler]] (when (pred o) handler))
-                      pred-map)]
-    (if handler
-      (handler o)
-      (throw (ex-info "match not found" {:target o})))))
-
-(defn create-handler
-  "Creates a request handler from the given configuration and subroutes."
-  [{:keys [handler middleware]} subroutes]
-  (let [mw-fn (fold-middleware (reverse middleware))
-        route-map (map (fn [route & cfg]
-                         [(route-matcher route)
-                          (if (not (map? (first cfg)))
-                            (create-handler {} cfg)
-                            (apply create-handler cfg))])
-                       subroutes)]
+  "Given a route configuration, return a function from request -> response."
+  [{:keys [children handler middleware]}]
+  (let [mw-fn (fold-middleware middleware)]
     (if handler
       (mw-fn handler)
-      (fn [req]
-        (let [matched-handler (apply-match route-map req)]
-          (if matched-handler
-            (mw-fn matched-handler)
-            (throw (ex-info "match not found" {:target req}))))))))
+      (let [path-handlers (into {}
+                                (for [[path child] children]
+                                  [path (route-matcher child)]))]
+        (fn [{:keys [uri remaining-path]} :as req]
+          (let [[next & rest] remaining-path]
+            (cond (contains? path-handlers next)
+                  (let [wrapped-handler (mw-fn (get path-handlers next))]
+                    (wrapped-handler (assoc req :remaining-path rest))))
+            (if-not (contains? path-handlers next)
+              (not-found-error (format "missing resource: %s" uri))
+              (let [wrapped-handler (mw-fn (get path-handlers next))]
+                (wrapped-handler (assoc req :remaining-path rest))))))))))
+
+(defn parse-route-config
+  [path & subroute-cfg]
+  (let [[this & remaining] (split-path path)]
+    ;; If this is a nested path (eg. /one/two) then the top path
+    ;; element should just point at the next (with the same subroutes).
+    (if remaining
+      {this {:children (parse-route-config remaining subroute-cfg)}}
+      ;; The first element after the current path MAY be a config map.
+      ;; Otherwise, it'll be the first path.
+      (let [[maybe-cfg & maybe-subroutes] subroute-cfg
+            [cfg subroutes] (if (map? maybe-cfg)
+                              [maybe-cfg maybe-subroutes]
+                              [{} subroute-cfg])]
+        {this (assoc cfg :children (map parse-route-config
+                                        subroutes))}))))
 
 (defn start-server
   "Starts a Gemini server on the specified port using the provided SSL context and handler."

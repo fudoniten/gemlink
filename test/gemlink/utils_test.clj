@@ -20,10 +20,16 @@
   (testing "first match"
     (is (= (cond-let
              [x nil] (+ x 1)
-             [y 2] (+ y 2)
-             [z 3] (+ z 3)
+             [y 2]   (+ y 2)
+             [z 3]   (+ z 3)
              :else 0)
            4)))
+
+  (testing "badly structured cond-let"
+    (is (thrown? IllegalArgumentException
+                 (cond-let
+                   [x 1] (+ x 1)
+                   [y 2]))))
 
   (testing "no match"
     (is (thrown? IllegalArgumentException
