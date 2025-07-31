@@ -8,6 +8,9 @@
             (cond
               (and (= test :else) (empty? more)) then
 
+              (and (empty? more) (not= test :else))
+              (throw (IllegalArgumentException. "cond-let requires an :else clause when no conditions match"))
+
               (vector? test)
               `(let [temp# ~(second test)]
                  (if temp#
