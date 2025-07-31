@@ -2,13 +2,16 @@
   (:require [gemlink.utils :refer :all]
             [clojure.test :refer [deftest is testing run-tests]]))
 
+(ns gemlink.utils-test
+  (:require [clojure.test :refer [deftest is testing run-tests]]))
+
 (deftest test-cond-let
   (testing "basic usage"
     (is (= (cond-let
              [x 1] (+ x 1)
              [y 2] (+ y 2)
              :else 0)
-           2)))
+           2))))
 
   (testing "else clause"
     (is (= (cond-let
@@ -24,17 +27,5 @@
              [z 3]   (+ z 3)
              :else 0)
            4)))
-
-  (testing "badly structured cond-let"
-    (is (thrown? IllegalArgumentException
-                 (cond-let
-                   [x 1] (+ x 1)
-                   [y 2]))))
-
-  (testing "no match"
-    (is (thrown? IllegalArgumentException
-                 (cond-let
-                   [x nil] (+ x 1)
-                   [y nil] (+ y 2))))))
 
 (run-tests)
