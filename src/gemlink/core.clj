@@ -1,12 +1,12 @@
 (ns gemlink.core
   (:require
    [clojure.core.async :refer [<! chan go]]
-   [clojure.pprint :refer [pprint]]
    [clojure.stacktrace :refer [print-stack-trace]]
    [clojure.string :as str]
 
    [gemlink.logging :as log]
-   [gemlink.utils :refer [cond-let pretty-format split-path parse-route-config]])
+   [gemlink.utils :refer [cond-let pretty-format]])
+
   (:import
 
    (java.io
