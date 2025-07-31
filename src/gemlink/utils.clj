@@ -16,7 +16,7 @@
                    ~(if (seq more)
                       (expand more)
                       (throw (IllegalArgumentException.
-                              "failed to bind in bind-let")))))
+                              "failed to bind in cond-let")))))
 
               :else (throw (IllegalArgumentException.
                             (str "cond-let expected a binding vector, got " test)))))]
