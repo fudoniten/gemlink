@@ -5,8 +5,7 @@
             [gemlink.core :refer :all]
             [gemlink.logging :as log]
             [gemlink.handlers :refer [base-handler]]
-            [gemlink.response :refer [success bad-request-error not-authorized-error get-type]]
-            [gemlink.core :refer [fold-middleware]])
+            [gemlink.response :refer [success bad-request-error not-authorized-error get-type get-body]])
   (:import (java.net InetAddress)
            (java.io ByteArrayInputStream ByteArrayOutputStream)
            (javax.net.ssl SSLSocket)))
@@ -167,22 +166,25 @@
 (deftest test-fold-middleware
   (let [middleware1 (fn [handler]
                       (fn [req]
-                        (assoc req :mw1 true)))
+                        (handler (assoc req :mw1 true))))
         middleware2 (fn [handler]
                       (fn [req]
-                        (assoc req :mw2 true)))
-        handler (fn [req] req)]
+                        (handler (assoc req :mw2 true))))
+        handler (fn [req] (success req))]
 
     (testing "no middleware"
-      (let [wrapped-handler (fold-middleware handler)]
-        (is (= (wrapped-handler {}) {}))))
+      (let [mw-fn (fold-middleware)
+            wrapped-handler (mw-fn handler)]
+        (is (= (get-body (wrapped-handler {})) {}))))
 
     (testing "single middleware"
-      (let [wrapped-handler (fold-middleware middleware1 handler)]
-        (is (= (wrapped-handler {}) {:mw1 true}))))
+      (let [mw-fn (fold-middleware middleware1)
+            wrapped-handler (mw-fn handler)]
+        (is (= (get-body (wrapped-handler {})) {:mw1 true}))))
 
     (testing "multiple middleware"
-      (let [wrapped-handler (fold-middleware middleware1 middleware2 handler)]
-        (is (= (wrapped-handler {}) {:mw1 true :mw2 true}))))))
+      (let [mw-fn (fold-middleware middleware1 middleware2)
+            wrapped-handler (mw-fn handler)]
+        (is (= (get-body (wrapped-handler {})) {:mw1 true :mw2 true}))))))
 
 (run-tests)

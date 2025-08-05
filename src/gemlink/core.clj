@@ -59,14 +59,17 @@
 
 (defn fold-middleware
   "Take a list of middleware functions (-> handler (-> req resp)) and return a middleware function."
-  ([] identity)
-  ([middleware] middleware)
-  ([middleware & rest] (middleware (fold-middleware rest))))
+  [& middlewares]
+  (reduce (fn [acc mw]
+            (fn [handler]
+              (acc (mw handler))))
+          identity
+          (reverse middlewares)))
 
 (defn route-matcher
   [{:keys [children handler middleware]
     :or   {middleware []}}]
-  (let [mw-fn (apply fold-middleware middleware)
+  (let [mw-fn (apply fold-middleware (reverse middleware))
         path-handlers (into {}
                             (for [[path path-cfg] children]
                               [path (route-matcher path-cfg)]))]
