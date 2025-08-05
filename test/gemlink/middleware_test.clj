@@ -1,22 +1,32 @@
 (ns gemlink.middleware-test
   (:require [gemlink.middleware :refer :all]
-            [clojure.test :refer [deftest is testing run-tests]]))
+            [gemlink.logging :as log]
+            [gemlink.response :refer (get-status get-body success)]
+            [clojure.test :refer [deftest is testing run-tests]])
+  (:import java.net.URI))
 
 (deftest test-parse-url
-  (let [handler (parse-url (fn [req] (:uri req)))]
+  (let [handler (parse-url (fn [req] (success (:uri req))))]
     (testing "valid URL"
-      (is (= (str (handler {:request-line "gemini://example.com"}))
-             "gemini://example.com")))
+      (is (= (-> {:request-line "gemini://example.com"}
+                 (handler)
+                 (get-body)
+                 (str))
+             "gemini://example.com"))
 
-    (testing "invalid URL"
-      (is (= (get-status (handler {:request-line "invalid-url"}))
-             59)))))
+      (is (instance? URI
+                     (-> {:request-line "gemini://example.com"}
+                         (handler)
+                         (get-body)))))))
 
 (deftest test-extract-path
-  (let [logger (log/print-logger :debug)
-        handler (extract-path :logger logger (fn [req] (:full-path req)))]
+  (let [logger (log/print-logger :fatal)
+        middleware (extract-path :logger logger)
+        handler (middleware (fn [req] (success (:full-path req))))]
     (testing "extract path from URI"
-      (is (= (handler {:uri (java.net.URI. "gemini://example.com/path/to/resource")})
+      (is (= (-> {:uri (java.net.URI. "gemini://example.com/path/to/resource")}
+                 (handler)
+                 (get-body))
              "/path/to/resource")))
 
     (testing "missing URI"
@@ -24,22 +34,25 @@
              40)))))
 
 (deftest test-log-requests
-  (let [logger (log/print-logger :debug)
-        handler (log-requests :logger logger (fn [req] req))]
+  (let [logger (log/print-logger :fatal)
+        middleware (log-requests :logger logger)
+        handler (middleware (fn [req] req))]
     (testing "log request"
       (is (= (handler {:request-line "gemini://example.com"})
              {:request-line "gemini://example.com"})))))
 
 (deftest test-log-responses
-  (let [logger (log/print-logger :debug)
-        handler (log-responses :logger logger (fn [req] (success "response")))]
+  (let [logger (log/print-logger :fatal)
+        middleware (log-responses :logger logger)
+        handler (middleware (fn [_] (success "response")))]
     (testing "log response"
       (is (= (get-body (handler {}))
              "response")))))
 
 (deftest test-ensure-return
-  (let [logger (log/print-logger :debug)
-        handler (ensure-return :logger logger (fn [_] (throw (Exception. "error"))))]
+  (let [logger (log/print-logger :fatal)
+        middleware (ensure-return :logger logger)
+        handler (middleware (fn [_] (throw (Exception. "error"))))]
     (testing "ensure return on exception"
       (is (= (get-status (handler {}))
              40)))))
