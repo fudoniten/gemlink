@@ -1,4 +1,4 @@
-# Gemini Server
+# GemLink Gemini Server
 
 This project is a simple server for the Gemini protocol, written in Clojure. The Gemini protocol is a lightweight, text-based protocol designed for serving content over the internet, similar to HTTP but much simpler and more privacy-focused.
 
