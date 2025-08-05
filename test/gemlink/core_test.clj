@@ -5,7 +5,8 @@
             [gemlink.core :refer :all]
             [gemlink.logging :as log]
             [gemlink.handlers :refer [base-handler]]
-            [gemlink.response :refer [success bad-request-error not-authorized-error get-type]])
+            [gemlink.response :refer [success bad-request-error not-authorized-error get-type]]
+            [gemlink.core :refer [fold-middleware]])
   (:import (java.net InetAddress)
            (java.io ByteArrayInputStream ByteArrayOutputStream)
            (javax.net.ssl SSLSocket)))
@@ -162,5 +163,26 @@
     (testing "middleware not applied on different paths"
       (let [req {:remaining-path ["test" "one" "two"]}]
         (is (= (get-type (matcher req)) :not-authorized-error))))))
+
+(deftest test-fold-middleware
+  (let [middleware1 (fn [handler]
+                      (fn [req]
+                        (assoc req :mw1 true)))
+        middleware2 (fn [handler]
+                      (fn [req]
+                        (assoc req :mw2 true)))
+        handler (fn [req] req)]
+
+    (testing "no middleware"
+      (let [wrapped-handler (fold-middleware handler)]
+        (is (= (wrapped-handler {}) {}))))
+
+    (testing "single middleware"
+      (let [wrapped-handler (fold-middleware middleware1 handler)]
+        (is (= (wrapped-handler {}) {:mw1 true}))))
+
+    (testing "multiple middleware"
+      (let [wrapped-handler (fold-middleware middleware1 middleware2 handler)]
+        (is (= (wrapped-handler {}) {:mw1 true :mw2 true}))))))
 
 (run-tests)
