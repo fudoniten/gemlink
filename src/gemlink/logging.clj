@@ -17,20 +17,25 @@
 
       (fatal! [_ msg]
         (when (<= (log-index :fatal) log-idx)
-          (println msg)))
+          (println msg)
+          (flush)))
 
       (error! [_ msg]
         (when (<= (log-index :error) log-idx)
-          (println msg)))
+          (println msg)
+          (flush)))
 
       (warn! [_ msg]
         (when (<= (log-index :warn) log-idx)
-          (println msg)))
+          (println msg)
+          (flush)))
 
       (info! [_ msg]
         (when (<= (log-index :info) log-idx)
-          (println msg)))
+          (println msg)
+          (flush)))
 
       (debug! [_ msg]
         (when (<= (log-index :debug) log-idx)
-          (println msg))))))
+          (println msg)
+          (flush))))))
