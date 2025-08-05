@@ -2,6 +2,10 @@
 
 This project is a simple server for the Gemini protocol, written in Clojure. The Gemini protocol is a lightweight, text-based protocol designed for serving content over the internet, similar to HTTP but much simpler and more privacy-focused.
 
+## Inspiration
+
+This project was largely inspired by Ring, a Clojure web applications library. Ring's simplicity and middleware-based architecture influenced the design of this Gemini server.
+
 ## Features
 
 - **Gemtext Support**: The server uses a Hiccup-like language called Gemtext for generating Gemini-formatted text files. This allows for easy and expressive creation of content that can be served over the Gemini protocol.
