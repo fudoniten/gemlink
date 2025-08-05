@@ -4,32 +4,13 @@ This project is a simple server for the Gemini protocol, written in Clojure. The
 
 ## Inspiration
 
-This project was largely inspired by Ring, a Clojure web applications library. Ring's simplicity and middleware-based architecture influenced the design of this Gemini server.
+This project was largely inspired by Ring's simplicity and middleware-based architecture. The simple Gemtext DSL was inspired by Hiccup.
 
 ## Features
 
 - **Gemtext Support**: The server uses a Hiccup-like language called Gemtext for generating Gemini-formatted text files. This allows for easy and expressive creation of content that can be served over the Gemini protocol.
 
 - **Clojure-based**: Built entirely in Clojure, leveraging its functional programming capabilities and rich ecosystem.
-
-## Getting Started
-
-To get started with this Gemini server, you will need to have Clojure installed on your system. You can then clone this repository and run the server using the provided scripts.
-
-## Usage
-
-1. **Clone the repository**:
-   ```bash
-   git clone <repository-url>
-   cd <repository-directory>
-   ```
-
-2. **Run the server**:
-   ```bash
-   clojure -M:run
-   ```
-
-3. **Access the server**: Use a Gemini client to connect to the server and view the content.
 
 ## Contributing
 
