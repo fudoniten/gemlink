@@ -5,7 +5,8 @@
    [clojure.string :as str]
 
    [gemlink.logging :as log]
-   [gemlink.utils :refer [cond-let parse-route-config build-path]]
+   [gemlink.utils :refer [cond-let parse-route-config]]
+   [gemlink.path :refer [build-path]]
    [gemlink.response :refer [not-found-error]])
 
   (:import

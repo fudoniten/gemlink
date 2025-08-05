@@ -10,7 +10,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, utils, helpers, ... }:
+  outputs = { nixpkgs, utils, helpers, ... }:
     utils.lib.eachDefaultSystem (system:
       let pkgs = nixpkgs.legacyPackages."${system}";
       in {
@@ -29,6 +29,15 @@
             # {} because there's no Nix-managed library deps
               [ (updateClojureDeps { }) ];
           };
+        };
+
+        checks = {
+          clojureTests = pkgs.runCommand "clojure-tests" { } ''
+            mkdir -p $TMPDIR
+            HOME=$TMPDIR
+            ${pkgs.clojure}/bin/clojure -X:test
+            touch $out
+          '';
         };
       });
 }

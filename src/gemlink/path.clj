@@ -1,5 +1,6 @@
 (ns gemlink.path
-  (:import [java.nio.file Files Paths]))
+  (:require [clojure.string :as str])
+  (:import [java.nio.file Paths]))
 
 (defn file-accessible?
   "Check if a file exists, and is a readable file."
@@ -51,3 +52,20 @@
 (defn string->path
   [^String path]
   (Paths/get path (into-array String [])))
+
+(defn split-path
+  "Splits a path string into a vector of non-empty segments."
+  [path]
+  (assert (or (sequential? path) (string? path))
+          (format "split-path expects a `sequential?` or a `string?`, got `%s`"
+                  path))
+  (if (sequential? path)
+    path
+    (->> (str/split path #"/")
+         (remove empty?)
+         vec)))
+
+(defn build-path
+  "Builds a path from path elements."
+  [els]
+  (str "/" (str/join "/" (map name els))))

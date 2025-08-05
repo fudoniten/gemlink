@@ -4,7 +4,7 @@
             [gemlink.logging :as log]
             [gemlink.utils :refer [generate-listing generate-listing mime-type pretty-format]]
             [gemlink.response :refer [success not-found-error bad-request-error unknown-server-error response? get-status get-body get-header]]
-            [gemlink.path :refer [get-file-contents join-paths] :as path])
+            [gemlink.path :refer [get-file-contents join-paths split-path build-path] :as path])
   (:import clojure.lang.ExceptionInfo
            (java.io
             BufferedReader
@@ -80,3 +80,12 @@
                (not-found-error)
 
                (unknown-server-error)))))))
+
+(defn users-handler
+  [users-path-mapper]
+  (fn [{:keys [remaining-path] :as req}]
+    (let [[user & remaining] (split-path remaining-path)]
+      (if-let [user-handler (users-path-mapper user)]
+        (user-handler (assoc req :remaining-path
+                             (apply build-path remaining)))
+        (not-found-error (format "user not found: %s" user))))))

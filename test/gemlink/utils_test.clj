@@ -1,7 +1,7 @@
 (ns gemlink.utils-test
   (:require [gemlink.utils :refer :all]
-            [gemlink.path :refer [join-paths string->path]]
-            [clojure.test :refer [deftest is testing run-tests]])
+            [gemlink.path :refer [join-paths string->path split-path]]
+            [clojure.test :refer [deftest is testing]])
   (:import [java.nio.file Files Paths]))
 
 (ns gemlink.utils-test

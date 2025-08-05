@@ -1,7 +1,6 @@
 (ns gemlink.utils
   (:require [clojure.pprint :refer [pprint]]
-            [clojure.string :as str]
-            [gemlink.path :refer [file-accessible? file-extension list-directory join-paths]]
+            [gemlink.path :refer [file-accessible? file-extension list-directory join-paths split-path build-path]]
             [gemlink.gemtext :refer [render-node]])
   (:import [java.net URI]
            [java.nio.file Paths Files]
@@ -33,23 +32,6 @@
   "Formats an object into a pretty-printed string."
   [o]
   (with-out-str (pprint o)))
-
-(defn split-path
-  "Splits a path string into a vector of non-empty segments."
-  [path]
-  (assert (or (sequential? path) (string? path))
-          (format "split-path expects a `sequential?` or a `string?`, got `%s`"
-                  path))
-  (if (sequential? path)
-    path
-    (->> (str/split path #"/")
-         (remove empty?)
-         vec)))
-
-(defn build-path
-  "Builds a path from path elements."
-  [els]
-  (str "/" (str/join "/" (map name els))))
 
 (defn parse-route-config
   "Parses a route configuration into a nested map structure.
