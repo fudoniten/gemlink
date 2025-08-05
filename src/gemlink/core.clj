@@ -5,22 +5,17 @@
    [clojure.string :as str]
 
    [gemlink.logging :as log]
-   [gemlink.utils :refer [cond-let pretty-format]]
-   [gemlink.response :refer [Response success bad-request-error unknown-server-error not-found-error response?]])
+   [gemlink.utils :refer [cond-let parse-route-config build-path]]
+   [gemlink.response :refer [not-found-error]])
 
   (:import
 
    (java.io
-    BufferedReader
-    FileInputStream
-    InputStreamReader
-    OutputStreamWriter)
+    FileInputStream)
 
    (java.net
     Socket
-    SocketException
-    URI
-    URISyntaxException)
+    SocketException)
 
    (java.security KeyStore)
 
@@ -61,122 +56,45 @@
                                               (with-out-str (print-stack-trace e)))))))))
       (.start))))
 
-(defn base-handler
-  "Basic Gemini handler, taking a socket, reading the request, and calling the
-  supplied handler."
-  [handler {:keys [logger]}]
-  (fn [client]
-    (log/debug! logger "opening streams...")
-    (let [in  (-> client (.getInputStream) (InputStreamReader.) (BufferedReader.))
-          out (-> client (.getOutputStream) (OutputStreamWriter.))]
-      (log/debug! logger "streams open!")
-      (try
-        (.startHandshake client)
-        (let [request-line (.readLine in)
-              session      (.getSession client)
-              request      {:request-line request-line
-                            :remote-addr  (.getInetAddress client)
-                            :remote-port  (.getPort client)
-                            :local-port   (.getLocalPort client)
-                            :tls-protocol (.getProtocol session)
-                            :tls-cipher   (.getCipherSuite session)}
-              ^Response response (handler request)]
-          (log/info! logger (format "request: %s" request-line))
-          (if-not (response? response)
-            (do (log/error! logger (format "handler response was not a Response: %s"
-                                           (pretty-format response)))
-                (.write out "40 unknown handler error\r\n"))
-            (do (.write out (format "%s %s\r\n"
-                                    (str (get-status response))
-                                    (get-header response)))
-                (when-let [body (get-body response)]
-                  (.write out body)))))
-        (catch Exception e
-          (log/error! logger (format "error processing request: %s\n%s"
-                                     (.getMessage e)
-                                     (with-out-str (print-stack-trace e))))
-          (.write out "40 unknown server error\r\n"))
-        (finally
-          (.flush out)
-          (.shutdownOutput client)
-          (Thread/sleep 50)
-          (.close client))))))
-
-(defn process-url
-  "Parses the request line into a URI and adds it to the request."
-  [handler]
-  (fn [{:keys [request-line] :as req}]
-    (try
-      (handler (assoc req :uri (URI. (str/trim request-line))))
-      (catch URISyntaxException _
-        (bad-request-error (format "invalid url: %s" request-line))))))
-
-(defn extract-path
-  "Extract the URI path from :uri for routing."
-  [handler {:keys [logger]}]
-  (fn [{:keys [uri] :as req}]
-    (if-not uri
-      (do (log/error! logger "request missing uri, can't extract path, aborting!")
-          (unknown-server-error "server misconfigured"))
-      (handler (assoc req
-                      :remaining-path (rest (str/split (.getPath uri) #"/"))
-                      :full-path      (.getPath uri))))))
-
-(defn log-requests
-  "Logs incoming requests using the provided logger, at debug level."
-  [handler {:keys [logger]}]
-  (fn [req]
-    (log/debug! logger "#####\n# REQUEST\n#####")
-    (log/debug! logger (pretty-format req))
-    (handler req)))
-
-(defn log-responses
-  "Logs outgoing responses using the provided logger, at debug level."
-  [handler {:keys [logger]}]
-  (fn [req]
-    (let [resp (handler req)]
-      (log/debug! logger "#####\n# RESPONSE\n#####")
-      (log/debug! logger resp)
-      resp)))
-
-(defn ensure-return
-  "Catch all exceptions, log them, and ensure something is returned to the client."
-  [handler {:keys [logger]}]
-  (fn [req]
-    (try
-      (handler req)
-      (catch Exception e
-        (log/error! logger (format "error serving request: %e"
-                                   (.getMessage e)))
-        (log/debug! logger (with-out-str (print-stack-trace e)))
-        (unknown-server-error "unknown server error")))))
-
 (defn fold-middleware
   "Take a list of middleware functions (-> handler (-> req resp)) and return a middleware function."
-  ([] (fn [handler] handler))
+  ([] identity)
   ([middleware] middleware)
   ([middleware & rest] (middleware (fold-middleware rest))))
 
-
 (defn route-matcher
-  "Given a route configuration, return a function from request -> response."
-  [{:keys [children handler middleware]}]
-  (let [mw-fn (fold-middleware middleware)]
-    (if handler
-      (mw-fn handler)
-      (let [path-handlers (into {}
-                                (for [[path child] children]
-                                  [path (route-matcher child)]))]
-        (fn [{:keys [uri remaining-path]} :as req]
-          (let [[next & rest] remaining-path]
-            (cond (contains? path-handlers next)
-                  (let [wrapped-handler (mw-fn (get path-handlers next))]
-                    (wrapped-handler (assoc req :remaining-path rest))))
-            (if-not (contains? path-handlers next)
-              (not-found-error (format "missing resource: %s" uri))
-              (let [wrapped-handler (mw-fn (get path-handlers next))]
-                (wrapped-handler (assoc req :remaining-path rest))))))))))
+  [{:keys [children handler middleware]
+    :or   {middleware []}}]
+  (let [mw-fn (apply fold-middleware middleware)
+        path-handlers (into {}
+                            (for [[path path-cfg] children]
+                              [path (route-matcher path-cfg)]))]
+    (fn [{:keys [remaining-path] :as req}]
+      (let [[next & rest] remaining-path]
+        (cond-let [base-handler handler]
+                  (let [wrapped-handler (mw-fn base-handler)]
+                    (wrapped-handler (assoc req :remaining-path (build-path remaining-path))))
 
+                  [path-handler (get path-handlers next)]
+                  (let [wrapped-handler (mw-fn path-handler)]
+                    (wrapped-handler (assoc req :remaining-path rest)))
+
+                  [[param param-handler] (first (filter (fn [[k _]] (str/starts-with? k ":"))
+                                                        path-handlers))]
+                  (let [wrapped-handler (mw-fn param-handler)
+                        param-key (keyword (subs param 1))]
+                    (wrapped-handler (-> req
+                                         (assoc :remaining-path rest)
+                                         (update :params assoc param-key next))))
+
+                  :else (not-found-error (format "path not found")))))))
+
+(defn define-routes
+  [{:keys [middleware handler]} routes]
+  (-> {:middleware middleware
+       :handler    handler
+       :children   (parse-route-config routes)}
+      (route-matcher)))
 
 (defn start-server
   "Starts a Gemini server on the specified port using the provided SSL context and handler."

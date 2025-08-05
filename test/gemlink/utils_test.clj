@@ -1,6 +1,8 @@
 (ns gemlink.utils-test
   (:require [gemlink.utils :refer :all]
-            [clojure.test :refer [deftest is testing run-tests]]))
+            [gemlink.path :refer [join-paths string->path]]
+            [clojure.test :refer [deftest is testing run-tests]])
+  (:import [java.nio.file Files Paths]))
 
 (ns gemlink.utils-test
   (:require [clojure.test :refer [deftest is testing run-tests]]))
@@ -11,7 +13,7 @@
              [x 1] (+ x 1)
              [y 2] (+ y 2)
              :else 0)
-           2))))
+           2)))
 
   (testing "else clause"
     (is (= (cond-let
@@ -28,6 +30,17 @@
              :else 0)
            4)))
 
+  (testing "destructuring"
+    (is (= (cond-let
+            [[x y] [2 3]] (* x y)
+            :else 0)
+           6))
+
+    (is (= (cond-let
+            [{:keys [x y]} {:x 5 :y 4}] (* x y)
+            :else 0)
+           20))))
+
 (deftest test-pretty-format
   (testing "pretty-format"
     (is (string? (pretty-format {:a 1 :b 2})))
@@ -41,9 +54,41 @@
 
 (deftest test-parse-route-config
   (testing "parse-route-config"
-    (is (= (parse-route-config "/a/b" {:handler :handler})
-           {"a" {"b" {:handler :handler}}}))
-    (is (= (parse-route-config "/a" {:handler :handler} "/b" {:handler :handler2})
-           {"a" {:handler :handler, :children ({"b" {:handler :handler2}})}}))))
+    (is (= (parse-route-config [["/a/b" {:handler :handler}]])
+           {"a" {:children {"b" {:handler :handler}}}}))
+    (is (= (parse-route-config [["/a" {:handler :handler}]
+                                ["/b" {:handler :handler2}]])
+           {"a" {:handler :handler}
+            "b" {:handler :handler2}}))
+    (is (thrown? Exception
+                 (parse-route-config [["/a"]])))
+    (is (= (parse-route-config [["/a" {:handler :handler0}]
+                                ["/b/c"
+                                 ["/d/e" {:handler :handler3}]
+                                 ["/f" {:handler :handler4}]]])
+           {"a" {:handler :handler0}
+            "b" {:children
+                 {"c" {:children
+                       {"d" {:children
+                             {"e" {:handler :handler3}}}
+                        "f" {:handler :handler4}}}}}}))))
 
-(run-tests)
+(deftest test-generate-listing
+  (testing "generate directory listing"
+    (let [temp-dir (make-temp-directory "test-dir")
+          file1 (create-file (string->path (join-paths (str temp-dir) "file1.txt")))
+          file2 (create-file (string->path (join-paths (str temp-dir) "file2.txt")))
+          subdir (create-directory (Paths/get (str temp-dir)
+                                              (into-array String ["subdir"])))]
+      (try
+        (let [base-uri (java.net.URI. "gemini://example.com/")
+              listing (generate-listing base-uri (.toString temp-dir))]
+          (is (string? listing))
+          (is (re-find #"file1.txt" listing))
+          (is (re-find #"file2.txt" listing))
+          (is (re-find #"subdir" listing)))
+        (finally
+          (Files/delete file1)
+          (Files/delete file2)
+          (Files/delete subdir)
+          (Files/delete temp-dir))))))

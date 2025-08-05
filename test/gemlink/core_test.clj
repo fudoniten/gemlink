@@ -1,8 +1,11 @@
 (ns gemlink.core-test
-  (:require [gemlink.core :refer :all]
+  (:require [clojure.test :refer [deftest is testing run-tests]]
+            [clojure.string :as str]
+
+            [gemlink.core :refer :all]
             [gemlink.logging :as log]
-            [clojure.test :refer [deftest is testing run-tests]]
-            [clojure.string :as str])
+            [gemlink.handlers :refer [base-handler]]
+            [gemlink.response :refer [success bad-request-error not-authorized-error get-type]])
   (:import (java.net InetAddress)
            (java.io ByteArrayInputStream ByteArrayOutputStream)
            (javax.net.ssl SSLSocket)))
@@ -65,70 +68,99 @@
             lines (str/split output #"\r\n")]
         (is (= (first lines) "40 unknown handler error"))))))
 
-(deftest test-route-matcher
-  (let [matcher (route-matcher ["test"])]
+(deftest test-define-routes
+  (let [matcher (-> (define-routes {} [["/test" {:handler (fn [_] :success)}]]))]
 
     (testing "matching route"
-      (let [req {:remaining-path ["test" "path"]}
+      (let [req {:remaining-path ["test"]}
             result (matcher req)]
-        (is (= (:remaining-path result) ["path"]))))
+        (is (= result :success))))
 
     (testing "non-matching route"
       (let [req {:remaining-path ["other" "path"]}]
-        (is (thrown? Exception (matcher req)))))
+        (is (= (get-type (matcher req)) :not-found-error)))))
 
-    (testing "nil remaining-path"
-      (let [req {:remaining-path nil}]
-        (is (thrown? Exception (matcher req))))))
+  (let [matcher (-> (define-routes {} [["/test"
+                                        ["/some" {:handler (fn [_] :success)}]
+                                        ["/other" {:handler (fn [_] :success2)}]
+                                        ["/return-path" {:handler (fn [{:keys [remaining-path]}] remaining-path)}]]]))]
 
-  (let [matcher (route-matcher [])]
-
-    (testing "match root route"
-      (let [req {:remaining-path []}
-            result (matcher req)]
-        (is (= (:remaining-path result) nil))))
+    (testing "nested matching route"
+      (let [req {:remaining-path ["test" "some"]}]
+        (is (= (matcher req) :success)))
+      (let [req {:remaining-path ["test" "other"]}]
+        (is (= (matcher req) :success2))))
 
     (testing "missing sub path"
       (let [req {:remaining-path ["nonexistent"]}]
-        (is (thrown? Exception (matcher req)))))))
+        (is (= (get-type (matcher req)) :not-found-error)))
+      (let [req {:remaining-path ["test" "nonexistent"]}]
+        (is (= (get-type (matcher req)) :not-found-error))))
 
-(deftest test-apply-match
-  (let [pred-map {#(= % :a) (fn [_] "Matched A")
-                  #(= % :b) (fn [_] "Matched B")
-                  #(= % :c) (fn [_] "Matched C")}]
+    (testing "incomplete path"
+      (let [req {:remaining-path ["test"]}]
+        (is (= (get-type (matcher req)) :not-found-error))))
 
-    (testing "matching predicate"
-      (is (= (apply-match pred-map :a) "Matched A"))
-      (is (= (apply-match pred-map :b) "Matched B"))
-      (is (= (apply-match pred-map :c) "Matched C")))
+    (testing "path is passed to handler"
+      (let [req {:remaining-path ["test" "return-path" "one" "two"]}]
+        (is (= (matcher req) "/one/two")))))
 
-    (testing "non-matching predicate"
-      (is (thrown? Exception (apply-match pred-map :d))))
+  (let [matcher (-> (define-routes {} [["/test/:one" {:handler (fn [req] req)}]]))]
 
-    (testing "empty predicate map"
-      (is (thrown? Exception (apply-match {} :a))))))
+    (testing "assign-parameter"
+      (let [req {:remaining-path ["test" "something"]}]
+        (is (= (-> (matcher req) :params :one)
+               "something"))))
 
-(deftest test-create-handler
-  (let [logger (log/print-logger :fatal)
-        success-handler (fn [_] (success "Root handler"))
-        subroute-handler (fn [_] (success "Subroute handler"))
-        handler (create-handler {:logger logger} [[] success-handler
-                                                  ["sub"] subroute-handler])]
+    (testing "assign-parameter-with-path"
+      (let [req {:remaining-path ["test" "something" "other"]}
+            resp (matcher req)]
+        (is (= (-> resp :params :one)
+               "something"))
+        (is (= (-> resp :remaining-path)
+               "/other")))))
 
-    (testing "root route"
-      (let [req {:remaining-path []}
-            response (handler req)]
-        (is (= (get-status response) 20))
-        (is (= (get-body response) "Root handler"))))
+  (let [matcher (-> (define-routes {} [["/test/:one/sub/:two" {:handler (fn [req] req)}]]))]
 
-    (testing "subroute"
-      (let [req {:remaining-path ["sub"]}
-            response (handler req)]
-        (is (= (get-status response) 20))
-        (is (= (get-body response) "Subroute handler"))))
+    (testing "assign-multiple-parameters"
+      (let [req {:remaining-path ["test" "something" "sub" "else"]}
+            resp (matcher req)]
+        (is (= (-> resp :params)
+               {:one "something" :two "else"}))))
 
-    (testing "non-matching route"
-      (let [req {:remaining-path ["unknown"]}]
-        (is (thrown? Exception (handler req)))))))
+    (testing "missing after parameter"
+      (let [req {:remaining-path ["test" "something" "oops"]}]
+        (is (= (get-type (matcher req)) :not-found-error)))))
+
+  (let [matcher (-> (define-routes {} [["/test"
+                                        ["/one" {:middleware [(fn [handler] (fn [req] (handler (assoc req :addition :one))))]}
+                                         ["/two" {:handler (fn [req] req)}]]
+                                        ["/other" {:handler (fn [_] :alternative)}]]]))]
+    (testing "middleware applied"
+      (let [req {:remaining-path ["test" "one" "two"]}]
+        (is (= (-> req (matcher) :addition) :one))))
+
+    (testing "middleware not applied on different paths"
+      (let [req {:remaining-path ["test" "other"]}]
+        (is (= (matcher req) :alternative))
+
+        (is (nil? (some-> req (matcher) :addition))))))
+
+  (let [matcher (-> (define-routes {} [["/test"
+                                        ["/one" {:middleware [(fn [handler] (fn [req] (handler (assoc req :tester [:first]))))]}
+                                         ["/two" {:middleware [(fn [handler] (fn [req] (handler (update req :tester (fn [arr] (conj arr :second))))))]}
+                                          ["/three" {:handler (fn [req] req)}]]]
+                                        ["/other" {:handler (fn [_] :alternative)}]]]))]
+    (testing "middleware applied in order"
+      (let [req {:remaining-path ["test" "one" "two" "three"]}]
+        (is (= (-> req (matcher) :tester) [:first :second])))))
+
+  (let [matcher (-> (define-routes {} [["/test"
+                                        ["/one" {:middleware [(fn [_] (fn [_] (not-authorized-error "oops")))]}
+                                         ["/two" {:handler (fn [req] req)}]]
+                                        ["/other" {:handler (fn [_] :alternative)}]]]))]
+    (testing "middleware not applied on different paths"
+      (let [req {:remaining-path ["test" "one" "two"]}]
+        (is (= (get-type (matcher req)) :not-authorized-error))))))
 
 (run-tests)

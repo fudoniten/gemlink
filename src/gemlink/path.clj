@@ -1,0 +1,53 @@
+(ns gemlink.path
+  (:import [java.nio.file Files Paths]))
+
+(defn file-accessible?
+  "Check if a file exists, and is a readable file."
+  [filename]
+  (let [f (java.io.File. filename)]
+    (and (.exists f)
+         (.isFile f)
+         (.canRead f))))
+
+(defn file-extension
+  "Grab the extension (if any) of a file, as a keyword."
+  [^String path]
+  (let [name (.getName (java.io.File. path))
+        idx  (.lastIndexOf name ".")]
+    (when (pos? idx)
+      (-> (subs name (inc idx))
+          (keyword)))))
+
+(defn join-paths
+  "Given a base path and subpath, return a full path. Throw an exception if the resulting path is outside of the base path."
+  [^String base ^String sub]
+  (let [base-path (Paths/get base (make-array String 0))
+        sub-path  (Paths/get sub  (make-array String 0))
+        resolved  (-> base-path
+                      (.resolve sub-path)
+                      (.normalize))]
+    (if (.startsWith resolved base-path)
+      (str resolved)
+      (throw (ex-info "path is not within base path!"
+                      {:resolved (str resolved)
+                       :base     (str base-path)
+                       :type     :unauthorized-access})))))
+
+(defn get-file-contents
+  "Slurp the content of a file, throwing an exception if the file doesn't exist."
+  [^String filename]
+  (when-not (file-accessible? filename)
+    (ex-info (format "missing file: %s" filename)
+             {:type :file-not-found}))
+  (slurp filename))
+
+(defn list-directory
+  [^String dir]
+  (-> (java.io.File. dir)
+      (.listFiles)
+      (vec)
+      (doall)))
+
+(defn string->path
+  [^String path]
+  (Paths/get path (into-array String [])))
