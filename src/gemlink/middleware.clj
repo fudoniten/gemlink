@@ -14,6 +14,7 @@
   "Parses the request line into a URI and adds it to the request."
   [handler]
   (fn [{:keys [request-line] :as req}]
+    (println "parsing url")
     (try
       (handler (assoc req :uri (URI. (str/trim request-line))))
       (catch URISyntaxException _
@@ -22,6 +23,7 @@
 (defn extract-path
   "Extract the URI path from :uri for routing."
   [& {:keys [logger]}]
+  (log/debug! logger "extracting path")
   (fn [handler]
     (fn [{:keys [uri] :as req}]
       (if-not uri
