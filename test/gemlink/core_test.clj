@@ -166,10 +166,10 @@
 (deftest test-fold-middleware
   (let [middleware1 (fn [handler]
                       (fn [req]
-                        (handler (assoc req :mw1 true))))
+                        (handler (update req :mw (fn [val] (concat val [:mw1]))))))
         middleware2 (fn [handler]
                       (fn [req]
-                        (handler (assoc req :mw2 true))))
+                        (handler (update req :mw (fn [val] (concat val [:mw2]))))))
         handler (fn [req] (success req))]
 
     (testing "no middleware"
@@ -180,11 +180,15 @@
     (testing "single middleware"
       (let [mw-fn (fold-middleware middleware1)
             wrapped-handler (mw-fn handler)]
-        (is (= (get-body (wrapped-handler {})) {:mw1 true}))))
+        (is (= (:mw (get-body (wrapped-handler {}))) '(:mw1)))))
 
     (testing "multiple middleware"
       (let [mw-fn (fold-middleware middleware1 middleware2)
             wrapped-handler (mw-fn handler)]
-        (is (= (get-body (wrapped-handler {})) {:mw1 true :mw2 true}))))))
+        (is (= (:mw (get-body (wrapped-handler {}))) '(:mw1 :mw2))))
+
+      (let [mw-fn (fold-middleware middleware2 middleware1)
+            wrapped-handler (mw-fn handler)]
+        (is (= (:mw (get-body (wrapped-handler {}))) '(:mw2 :mw1)))))))
 
 (run-tests)

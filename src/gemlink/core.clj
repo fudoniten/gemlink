@@ -47,7 +47,12 @@
                (try
                  (let [^Socket client (.accept server-sock)]
                    (log/debug! logger "handling request...")
-                   (future (handler client)))
+                   (future
+                     (try (handler client)
+                          (catch Exception e
+                            (println (format "unexpected exception serving request: %s"
+                                             (.getMessage e)))
+                            (println (with-out-str (print-stack-trace e)))))))
                  (catch SocketException _
                    (log/info! logger "socket closed, shutting down listener...")
                    (reset! running? false))
@@ -64,7 +69,7 @@
             (fn [handler]
               (acc (mw handler))))
           identity
-          (reverse middlewares)))
+          middlewares))
 
 (defn route-matcher
   [{:keys [children handler middleware]
