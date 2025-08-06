@@ -84,25 +84,21 @@
       (let [[next & rest] remaining-path]
         (cond-let [base-handler handler]
                   (let [wrapped-handler (mw-fn base-handler)]
-                    (println "matched handler!")
                     (wrapped-handler (assoc req :remaining-path (build-path remaining-path))))
 
                   [path-handler (get path-handlers next)]
                   (let [wrapped-handler (mw-fn path-handler)]
-                    (println "found next handler!")
                     (wrapped-handler (assoc req :remaining-path rest)))
 
                   [[param param-handler] (first (filter (fn [[k _]] (str/starts-with? k ":"))
                                                         path-handlers))]
                   (let [wrapped-handler (mw-fn param-handler)
                         param-key (keyword (subs param 1))]
-                    (println (format "got a param: %s" param))
                     (wrapped-handler (-> req
                                          (assoc :remaining-path rest)
                                          (update :params assoc param-key next))))
 
-                  :else (do (println "path not found!")
-                            (not-found-error (format "path not found"))))))))
+                  :else (not-found-error (format "path not found")))))))
 
 (defn define-routes
   [{:keys [middleware handler]} routes]

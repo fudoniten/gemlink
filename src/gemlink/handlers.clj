@@ -1,5 +1,8 @@
 (ns gemlink.handlers
-  (:require [gemlink.utils :refer [generate-listing generate-listing mime-type]]
+  (:require [clojure.stacktrace :refer [print-stack-trace]]
+
+            [gemlink.logging :as log]
+            [gemlink.utils :refer [generate-listing generate-listing mime-type]]
             [gemlink.response :refer [success not-found-error bad-request-error unknown-server-error]]
             [gemlink.path :refer [get-file-contents join-paths split-path build-path] :as path])
   (:import clojure.lang.ExceptionInfo))
@@ -9,8 +12,7 @@
   (fn [_] (success body)))
 
 (defn path-handler
-  [path {:keys [listing? index-file mime-type-reader]
-         :or   {listing?          false}}]
+  [path {:keys [listing? index-file mime-type-reader logger]}]
   (fn [{:keys [uri remaining-path]}]
     (if-not remaining-path
       (cond listing?   (success (generate-listing uri path)
@@ -31,7 +33,10 @@
                ::path/file-not-found
                (not-found-error)
 
-               (unknown-server-error)))))))
+               (do (log/error! logger (format "unexpected error: %s"
+                                              (.getMessage e)))
+                   (log/debug! logger (with-out-str (print-stack-trace e)))
+                   (unknown-server-error))))))))
 
 (defn users-handler
   [users-path-mapper]
