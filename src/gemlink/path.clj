@@ -22,11 +22,14 @@
 (defn join-paths
   "Given a base path and subpath, return a full path. Throw an exception if the resulting path is outside of the base path."
   [^String base ^String sub]
-  (let [base-path (Paths/get base (make-array String 0))
-        sub-path  (Paths/get sub  (make-array String 0))
-        resolved  (-> base-path
-                      (.resolve sub-path)
-                      (.normalize))]
+  (let [sanitize-subpath (fn [^String subpath]
+                           (let [p (str/replace-first subpath "^/" "")]
+                             (if (str/blank? p)
+                               "."
+                               p)))
+        base-path (Paths/get base
+                             (into-array String [(sanitize-subpath sub)]))
+        resolved  (.normalize base-path)]
     (if (.startsWith resolved base-path)
       (str resolved)
       (throw (ex-info "path is not within base path!"
