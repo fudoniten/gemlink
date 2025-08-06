@@ -6,7 +6,8 @@
   (:import java.net.URI))
 
 (deftest test-parse-url
-  (let [handler (parse-url (fn [req] (success (:uri req))))]
+  (let [mw-fn (parse-url :logger (log/print-logger :fatal))
+        handler (mw-fn (fn [req] (success (:uri req))))]
     (testing "valid URL"
       (is (= (-> {:request-line "gemini://example.com"}
                  (handler)
