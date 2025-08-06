@@ -4,6 +4,7 @@
    [clojure.stacktrace :refer [print-stack-trace]]
    [clojure.string :as str]
 
+   [gemlink.middleware :refer [base-middleware]]
    [gemlink.logging :as log]
    [gemlink.utils :refer [cond-let parse-route-config]]
    [gemlink.path :refer [build-path]]
@@ -38,7 +39,9 @@
 (defn serve-requests
   "Listens for incoming requests on the server socket and handles them using the provided handler."
   [{:keys [logger]} ^Socket server-sock handler]
-  (let [running?   (atom true)]
+  (let [running? (atom true)
+        logged-base (base-middleware :logger logger)
+        full-handler (logged-base handler)]
     (log/info! logger "listening on server socket for incoming requests...")
     (doto (Thread.
            (fn []
@@ -48,7 +51,7 @@
                  (let [^Socket client (.accept server-sock)]
                    (log/debug! logger "handling request...")
                    (future
-                     (try (handler client)
+                     (try (full-handler client)
                           (catch Exception e
                             (println (format "unexpected exception serving request: %s"
                                              (.getMessage e)))

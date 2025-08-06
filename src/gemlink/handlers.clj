@@ -1,60 +1,12 @@
 (ns gemlink.handlers
-  (:require [clojure.stacktrace :refer [print-stack-trace]]
-
-            [gemlink.logging :as log]
-            [gemlink.utils :refer [generate-listing generate-listing mime-type pretty-format]]
-            [gemlink.response :refer [success not-found-error bad-request-error unknown-server-error response? get-status get-body get-header]]
+  (:require [gemlink.utils :refer [generate-listing generate-listing mime-type]]
+            [gemlink.response :refer [success not-found-error bad-request-error unknown-server-error]]
             [gemlink.path :refer [get-file-contents join-paths split-path build-path] :as path])
-  (:import clojure.lang.ExceptionInfo
-           (java.io
-            BufferedReader
-            InputStreamReader
-            OutputStreamWriter)))
+  (:import clojure.lang.ExceptionInfo))
 
 (defn static-handler
   [body]
   (fn [_] (success body)))
-
-(defn base-handler
-  "Basic Gemini handler, taking a socket, reading the request, and calling the
-  supplied handler."
-  [handler {:keys [logger]}]
-  (fn [client]
-    (log/debug! logger "opening streams...")
-    (let [in  (-> client (.getInputStream) (InputStreamReader.) (BufferedReader.))
-          out (-> client (.getOutputStream) (OutputStreamWriter.))]
-      (log/debug! logger "streams open!")
-      (try
-        (.startHandshake client)
-        (let [request-line (.readLine in)
-              session      (.getSession client)
-              request      {:request-line request-line
-                            :remote-addr  (.getInetAddress client)
-                            :remote-port  (.getPort client)
-                            :local-port   (.getLocalPort client)
-                            :tls-protocol (.getProtocol session)
-                            :tls-cipher   (.getCipherSuite session)}
-              response (handler request)]
-          (log/info! logger (format "request: %s" request-line))
-          (if-not (response? response)
-            (do (log/error! logger (format "handler response was not a Response: %s"
-                                           (pretty-format response)))
-                (.write out "40 unknown handler error\r\n"))
-            (do (.write out (format "%s %s\r\n"
-                                    (str (get-status response))
-                                    (get-header response)))
-                (when-let [body (get-body response)]
-                  (.write out body)))))
-        (catch Exception e
-          (log/error! logger (format "error processing request: %s\n%s"
-                                     (.getMessage e)
-                                     (with-out-str (print-stack-trace e))))
-          (.write out "40 unknown server error\r\n"))
-        (finally
-          (.flush out)
-          (.shutdownOutput client)
-          (Thread/sleep 50)
-          (.close client))))))
 
 (defn path-handler
   [path {:keys [listing? index-file mime-type-reader]

@@ -4,7 +4,7 @@
 
             [gemlink.core :refer :all]
             [gemlink.logging :as log]
-            [gemlink.handlers :refer [base-handler]]
+            [gemlink.middleware :refer [base-middleware]]
             [gemlink.response :refer [success bad-request-error not-authorized-error get-type get-body]])
   (:import (java.net InetAddress)
            (java.io ByteArrayInputStream ByteArrayOutputStream)
@@ -25,10 +25,11 @@
                        (getProtocol [] "TLSv1.2")
                        (getCipherSuite [] "TLS_RSA_WITH_AES_128_CBC_SHA"))))))
 
-(deftest test-base-handler
+(deftest test-base-middleware
   (let [out-stream (ByteArrayOutputStream.)
         logger (log/print-logger :fatal)
-        handler (base-handler (fn [_] (success "Hello, Gemini!")) {:logger logger})
+        base (base-middleware :logger logger)
+        handler (base (fn [_] (success "Hello, Gemini!")))
         socket (mock-socket "gemini://example.com\r\n" out-stream)]
     (testing "successfully request simple page"
       (handler socket)
@@ -39,7 +40,8 @@
 
   (let [out-stream (ByteArrayOutputStream.)
         logger (log/print-logger :fatal)
-        handler (base-handler (fn [_] (bad-request-error "Invalid request")) {:logger logger})
+        base (base-middleware :logger logger)
+        handler (base (fn [_] (bad-request-error "Invalid request")))
         socket (mock-socket "invalid-request\r\n" out-stream)]
     (testing "handle invalid request"
       (handler socket)
@@ -50,7 +52,8 @@
 
   (let [out-stream (ByteArrayOutputStream.)
         logger (log/print-logger :fatal)
-        handler (base-handler (fn [_] (throw (Exception. "Handler error"))) {:logger logger})
+        base (base-middleware :logger logger)
+        handler (base (fn [_] (throw (Exception. "Handler error"))))
         socket (mock-socket "gemini://example.com\r\n" out-stream)]
     (testing "handle handler error"
       (handler socket)
@@ -60,7 +63,8 @@
 
   (let [out-stream (ByteArrayOutputStream.)
         logger (log/print-logger :fatal)
-        handler (base-handler (fn [_] "Not a response") {:logger logger})
+        base (base-middleware :logger logger)
+        handler (base (fn [_] "Not a response"))
         socket (mock-socket "gemini://example.com\r\n" out-stream)]
     (testing "handle unknown handler error"
       (handler socket)
@@ -190,5 +194,3 @@
       (let [mw-fn (fold-middleware middleware2 middleware1)
             wrapped-handler (mw-fn handler)]
         (is (= (:mw (get-body (wrapped-handler {}))) '(:mw2 :mw1)))))))
-
-(run-tests)
