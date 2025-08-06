@@ -77,7 +77,7 @@
 (defn route-matcher
   [{:keys [children handler middleware]
     :or   {middleware []}}]
-  (let [mw-fn (apply fold-middleware (reverse middleware))
+  (let [mw-fn (apply fold-middleware middleware)
         path-handlers (into {}
                             (for [[path path-cfg] children]
                               [path (route-matcher path-cfg)]))]

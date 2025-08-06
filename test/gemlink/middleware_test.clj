@@ -56,5 +56,3 @@
     (testing "ensure return on exception"
       (is (= (get-status (handler {}))
              40)))))
-
-(run-tests)
