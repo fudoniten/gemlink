@@ -85,31 +85,29 @@
                                                                  path (pprint-str path-cfg)))
                                       [path (route-matcher path-cfg)])
                                     children))]
-    (fn [{:keys [remaining-path] :as req}]
-      (log/debug! logger (format "routing request: %s"
-                                 (pretty-format req)))
-      (let [[next & rest] remaining-path]
-        (cond-let [path-handler (get path-handlers next)]
-                  (let [wrapped-handler (mw-fn path-handler)]
-                    (log/debug! logger (format "matched path handler %s: %s" next path-handler))
-                    (wrapped-handler (assoc req :remaining-path rest)))
+    (mw-fn
+     (fn [{:keys [remaining-path] :as req}]
+       (log/debug! logger (format "routing request: %s"
+                                  (pretty-format req)))
+       (let [[next & rest] remaining-path]
+         (cond-let [path-handler (get path-handlers next)]
+                   (do (log/debug! logger (format "matched path handler: %s" next))
+                       (path-handler (assoc req :remaining-path rest)))
 
-                  [[param param-handler] (first (filter (fn [[k _]] (str/starts-with? k ":"))
-                                                        path-handlers))]
-                  (let [wrapped-handler (mw-fn param-handler)
-                        param-key (keyword (subs param 1))]
-                    (log/debug! logger (format "matched parameter: %s"
-                                               param))
-                    (wrapped-handler (-> req
-                                         (assoc :remaining-path rest)
-                                         (update :params assoc param-key next))))
+                   [[param param-handler] (first (filter (fn [[k _]] (str/starts-with? k ":"))
+                                                         path-handlers))]
+                   (let [param-key (keyword (subs param 1))]
+                     (log/debug! logger (format "matched parameter: %s"
+                                                param))
+                     (param-handler (-> req
+                                        (assoc :remaining-path rest)
+                                        (update :params assoc param-key next))))
 
-                  [base-handler handler]
-                  (let [wrapped-handler (mw-fn base-handler)]
-                    (log/debug! logger (format "matched base handler"))
-                    (wrapped-handler (assoc req :remaining-path (build-path remaining-path))))
+                   [base-handler handler]
+                   (do (log/debug! logger (format "matched base handler"))
+                       (base-handler (assoc req :remaining-path (build-path remaining-path))))
 
-                  :else (not-found-error (format "path not found")))))))
+                   :else (not-found-error (format "path not found"))))))))
 
 (defn define-routes
   [opts routes]
