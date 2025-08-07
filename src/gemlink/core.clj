@@ -86,6 +86,7 @@
                                       [path (route-matcher path-cfg)])
                                     children))]
     (fn [{:keys [remaining-path] :as req}]
+      (log/debug! logger (format "remaining path is: %s" remaining-path))
       (let [[next & rest] remaining-path]
         (log/debug! logger (format "next path element: %s" next))
         (cond-let [path-handler (get path-handlers next)]
