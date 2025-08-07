@@ -73,9 +73,9 @@
 (defn extract-path
   "Extract the URI path from :uri for routing."
   [& {:keys [logger]}]
-  (log/debug! logger "extracting path")
   (fn [handler]
     (fn [{:keys [uri] :as req}]
+      (log/debug! logger "extracting path")
       (if-not uri
         (do (log/error! logger "request missing uri, can't extract path, aborting!")
             (unknown-server-error "server misconfigured"))
