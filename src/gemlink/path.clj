@@ -71,4 +71,6 @@
 (defn build-path
   "Builds a path from path elements."
   [els]
-  (str "/" (str/join "/" (map name els))))
+  (if (string? els)
+    els
+    (str "/" (str/join "/" (map name els)))))

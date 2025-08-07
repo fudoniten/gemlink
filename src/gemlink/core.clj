@@ -87,6 +87,7 @@
                                     children))]
     (fn [{:keys [remaining-path] :as req}]
       (let [[next & rest] remaining-path]
+        (log/debug! logger (format "next path element: %s" next))
         (cond-let [path-handler (get path-handlers next)]
                   (let [wrapped-handler (mw-fn path-handler)]
                     (log/debug! logger (format "matched path handler %s: %s" next path-handler))
