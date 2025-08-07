@@ -84,7 +84,7 @@
       (let [[next & rest] remaining-path]
         (cond-let [path-handler (get path-handlers next)]
                   (let [wrapped-handler (mw-fn path-handler)]
-                    (log/debug! logger (format "matched path handler: %s" next))
+                    (log/debug! logger (format "matched path handler %s: %s" next path-handler))
                     (wrapped-handler (assoc req :remaining-path rest)))
 
                   [[param param-handler] (first (filter (fn [[k _]] (str/starts-with? k ":"))
