@@ -80,10 +80,11 @@
     :or   {middleware []}}]
   (let [mw-fn (apply fold-middleware middleware)
         pprint-str (fn [o] (with-out-str (pprint o)))
-        path-handlers (into {} (for [[path path-cfg] children]
-                                 (log/debug! logger "adding route for child %s: %s"
-                                             path (pprint-str path-cfg))
-                                 [path (route-matcher path-cfg)]))]
+        path-handlers (into {} (map (fn [[path path-cfg]]
+                                      (log/debug! logger (format "adding route for child %s: %s"
+                                                                 path (pprint-str path-cfg)))
+                                      [path (route-matcher path-cfg)])
+                                    children))]
     (fn [{:keys [remaining-path] :as req}]
       (let [[next & rest] remaining-path]
         (cond-let [path-handler (get path-handlers next)]
