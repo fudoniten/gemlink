@@ -3,6 +3,7 @@
    [clojure.core.async :refer [<! chan go]]
    [clojure.stacktrace :refer [print-stack-trace]]
    [clojure.string :as str]
+   [clojure.pprint :refer [pprint]]
 
    [gemlink.middleware :refer [base-middleware]]
    [gemlink.logging :as log]
@@ -78,7 +79,10 @@
   [{:keys [children handler middleware logger]
     :or   {middleware []}}]
   (let [mw-fn (apply fold-middleware middleware)
+        pprint-str (fn [o] (with-out-str (pprint o)))
         path-handlers (into {} (for [[path path-cfg] children]
+                                 (log/debug! logger "adding route for child %s: %s"
+                                             path (pprint-str path-cfg))
                                  [path (route-matcher path-cfg)]))]
     (fn [{:keys [remaining-path] :as req}]
       (let [[next & rest] remaining-path]
