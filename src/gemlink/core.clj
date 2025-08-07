@@ -82,12 +82,7 @@
                                  [path (route-matcher path-cfg)]))]
     (fn [{:keys [remaining-path] :as req}]
       (let [[next & rest] remaining-path]
-        (cond-let [base-handler handler]
-                  (let [wrapped-handler (mw-fn base-handler)]
-                    (log/debug! logger (format "matched base handler"))
-                    (wrapped-handler (assoc req :remaining-path (build-path remaining-path))))
-
-                  [path-handler (get path-handlers next)]
+        (cond-let [path-handler (get path-handlers next)]
                   (let [wrapped-handler (mw-fn path-handler)]
                     (log/debug! logger (format "matched path handler: %s" next))
                     (wrapped-handler (assoc req :remaining-path rest)))
@@ -101,6 +96,11 @@
                     (wrapped-handler (-> req
                                          (assoc :remaining-path rest)
                                          (update :params assoc param-key next))))
+
+                  [base-handler handler]
+                  (let [wrapped-handler (mw-fn base-handler)]
+                    (log/debug! logger (format "matched base handler"))
+                    (wrapped-handler (assoc req :remaining-path (build-path remaining-path))))
 
                   :else (not-found-error (format "path not found")))))))
 
