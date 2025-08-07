@@ -23,7 +23,7 @@
                                     :mime-type (mime-type index-file))
                            (not-found-error)))
             :else      (not-found-error))
-      (try (let [full-filename (join-paths path remaining-path)
+      (try (let [full-filename (join-paths path (build-path remaining-path))
                  mime-type     (mime-type full-filename mime-type-reader)
                  file-contents (get-file-contents full-filename)]
              (log/debug! logger (format "serving file %s with mime-type %s"
