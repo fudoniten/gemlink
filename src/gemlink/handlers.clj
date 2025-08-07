@@ -41,10 +41,12 @@
                    (unknown-server-error))))))))
 
 (defn users-handler
-  [users-path-mapper]
+  [users-handler-mapper & {:keys [logger]}]
   (fn [{:keys [remaining-path] :as req}]
     (let [[user & remaining] (split-path remaining-path)]
-      (if-let [user-handler (users-path-mapper user)]
-        (user-handler (assoc req :remaining-path
-                             (apply build-path remaining)))
+      (if-let [user-handler (users-handler-mapper user)]
+        (do (log/debug! logger (format "serving request for user %s"
+                                       user))
+            (user-handler (assoc req :remaining-path
+                                 (apply build-path remaining))))
         (not-found-error (format "user not found: %s" user))))))
