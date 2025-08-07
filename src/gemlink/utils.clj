@@ -88,20 +88,22 @@
   (swap! REGISTERED_EXTENSIONS
          update ext mime-type))
 
+(defn pthru [o] (println o) o)
+
 (defn mime-type
   "Given a filename, return the best guess at a mime-type for the file."
   ([^String filename] (mime-type filename nil))
   ([^String filename mime-type-reader]
    (when-not (file-accessible? filename)
-     (ex-info (format "missing file: %s" filename)
-              {:type :file-not-found}))
-   (when-let [mime-type (some->> (file-extension filename)
+     (throw (ex-info (format "missing file: %s" filename)
+                     {:type :file-not-found})))
+   (if-let [mime-type (some->> (file-extension filename)
                                  (get @REGISTERED_EXTENSIONS))]
-     mime-type)
-   (if mime-type-reader
-     (mime-type-reader filename)
-     (let [p (Paths/get filename (make-array String 0))]
-       (Files/probeContentType p)))))
+     mime-type
+     (if mime-type-reader
+       (mime-type-reader filename)
+       (let [p (Paths/get filename (make-array String 0))]
+         (Files/probeContentType p))))))
 
 (defn make-temp-directory
   [prefix]
