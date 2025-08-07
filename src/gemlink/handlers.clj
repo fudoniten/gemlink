@@ -26,6 +26,8 @@
       (try (let [full-filename (join-paths path remaining-path)
                  mime-type     (mime-type full-filename mime-type-reader)
                  file-contents (get-file-contents full-filename)]
+             (log/debug! logger (format "serving file %s with mime-type %s"
+                                        full-filename mime-type))
              (success file-contents :mime-type mime-type))
            (catch ExceptionInfo e
              (case (:type (ex-data e))
