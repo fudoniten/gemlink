@@ -7,7 +7,7 @@
 
    [gemlink.middleware :refer [base-middleware]]
    [gemlink.logging :as log]
-   [gemlink.utils :refer [cond-let parse-route-config]]
+   [gemlink.utils :refer [cond-let parse-route-config pretty-format]]
    [gemlink.path :refer [build-path]]
    [gemlink.response :refer [not-found-error]])
 
@@ -86,9 +86,9 @@
                                       [path (route-matcher path-cfg)])
                                     children))]
     (fn [{:keys [remaining-path] :as req}]
-      (log/debug! logger (format "remaining path is: %s" remaining-path))
+      (log/debug! logger (format "routing request: %s"
+                                 (pretty-format req)))
       (let [[next & rest] remaining-path]
-        (log/debug! logger (format "next path element: %s" next))
         (cond-let [path-handler (get path-handlers next)]
                   (let [wrapped-handler (mw-fn path-handler)]
                     (log/debug! logger (format "matched path handler %s: %s" next path-handler))
