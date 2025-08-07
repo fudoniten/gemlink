@@ -105,10 +105,8 @@
                   :else (not-found-error (format "path not found")))))))
 
 (defn define-routes
-  [{:keys [middleware handler]} routes]
-  (-> {:middleware middleware
-       :handler    handler
-       :children   (parse-route-config routes)}
+  [opts routes]
+  (-> (assoc opts :children (parse-route-config routes))
       (route-matcher)))
 
 (defn start-server
