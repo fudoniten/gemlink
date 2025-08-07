@@ -103,7 +103,7 @@
      (if mime-type-reader
        (mime-type-reader filename)
        (let [p (Paths/get filename (make-array String 0))]
-         (Files/probeContentType p))))))
+         (or (Files/probeContentType p)  "application/octet-stream"))))))
 
 (defn make-temp-directory
   [prefix]
