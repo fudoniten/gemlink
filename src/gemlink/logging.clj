@@ -10,6 +10,14 @@
 (def LOG-LEVELS [:fatal :error :warn :info :debug])
 (defn log-index [log-level] (.indexOf LOG-LEVELS log-level))
 
+(extend-protocol Logger
+  nil
+  (fatal! [_ _])
+  (error! [_ _])
+  (warn!  [_ _])
+  (info!  [_ _])
+  (debug! [_ _]))
+
 (defn print-logger
   [log-level]
   (let [log-idx (log-index log-level)]

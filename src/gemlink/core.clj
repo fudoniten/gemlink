@@ -75,7 +75,7 @@
           middlewares))
 
 (defn route-matcher
-  [{:keys [children handler middleware]
+  [{:keys [children handler middleware logger]
     :or   {middleware []}}]
   (let [mw-fn (apply fold-middleware middleware)
         path-handlers (into {} (for [[path path-cfg] children]
@@ -84,16 +84,20 @@
       (let [[next & rest] remaining-path]
         (cond-let [base-handler handler]
                   (let [wrapped-handler (mw-fn base-handler)]
+                    (log/debug! logger (format "matched base handler"))
                     (wrapped-handler (assoc req :remaining-path (build-path remaining-path))))
 
                   [path-handler (get path-handlers next)]
                   (let [wrapped-handler (mw-fn path-handler)]
+                    (log/debug! logger (format "matched path handler: %s" next))
                     (wrapped-handler (assoc req :remaining-path rest)))
 
                   [[param param-handler] (first (filter (fn [[k _]] (str/starts-with? k ":"))
                                                         path-handlers))]
                   (let [wrapped-handler (mw-fn param-handler)
                         param-key (keyword (subs param 1))]
+                    (log/debug! logger (format "matched parameter: %s"
+                                               param))
                     (wrapped-handler (-> req
                                          (assoc :remaining-path rest)
                                          (update :params assoc param-key next))))
