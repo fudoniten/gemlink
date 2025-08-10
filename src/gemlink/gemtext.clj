@@ -109,3 +109,7 @@
   (-> nodes
       (walk-footnotes)
       (render-node)))
+
+(defn render [node]
+  "Just a prettier alias for external use."
+  (render-node node))
