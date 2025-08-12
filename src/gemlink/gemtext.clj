@@ -1,7 +1,12 @@
 (ns gemlink.gemtext
   (:require [clojure.string :as str]))
 
-(defmulti render-node first)
+(defmulti render-node
+  (fn [node]
+    (cond (vector? node)     (first node)
+          (sequential? node) :seq
+          (string? node)     :string
+          :else              :literal)))
 
 (defmethod render-node :gemini
   [[_ & children]]
@@ -65,6 +70,20 @@
                      (str "=> " uri " [" n "] " label)
                      (str "[" n "] " label))))
             (str/join \newline))))
+
+(defmethod render-node :seq
+  [nodes]
+  (->> nodes (map render-node) (str/join \newline)))
+
+(defmethod render-node :string
+  [s] s)
+
+(defmethod render-node :literal
+  [o] (str o))
+
+(defmethod render-node :block
+  [[_ nodes]]
+  (str/join \newline (map render-node nodes)))
 
 (defn walk-footnotes
   [tree]
