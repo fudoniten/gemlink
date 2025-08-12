@@ -1,6 +1,15 @@
 (ns gemlink.gemtext
   (:require [clojure.string :as str]))
 
+(defn normalize-node
+  [node]
+  (cond (vector? node)     node
+        (sequential? node) (vec node)
+        (string? node)     [:text node]
+        (map? node)        (throw (ex-info "map is not supported in gemtext"
+                                           {:node node}))
+        :else              [:text (str node)]))
+
 (defmulti render-node
   (fn [node]
     (cond (vector? node)     (first node)
@@ -72,18 +81,16 @@
             (str/join \newline))))
 
 (defmethod render-node :seq
-  [nodes]
-  (->> nodes (map render-node) (str/join \newline)))
+  [node]
+  (render-node (normalize-node node)))
 
-(defmethod render-node :string
-  [s] s)
+(defmethod render-node :string [s] s)
 
-(defmethod render-node :literal
-  [o] (str o))
+(defmethod render-node :literal [o] (str o))
 
 (defmethod render-node :block
   [[_ nodes]]
-  (str/join \newline (map render-node nodes)))
+  (->> nodes (map render-node) (str/join \newline)))
 
 (defn walk-footnotes
   [tree]
