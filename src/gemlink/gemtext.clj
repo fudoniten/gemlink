@@ -89,7 +89,7 @@
 (defmethod render-node :literal [o] (str o))
 
 (defmethod render-node :block
-  [[_ nodes]]
+  [[_ & nodes]]
   (->> nodes (map render-node) (str/join \newline)))
 
 (defn walk-footnotes
