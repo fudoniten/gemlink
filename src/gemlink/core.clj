@@ -22,6 +22,11 @@
 
    (java.security KeyStore)
 
+   (java.util.concurrent
+    Executors
+    ExecutorService
+    TimeUnit)
+
    (javax.net.ssl KeyManagerFactory SSLContext)))
 
 
@@ -38,33 +43,44 @@
 
 
 (defn serve-requests
-  "Listens for incoming requests on the server socket and handles them using the provided handler."
-  [{:keys [logger]} ^Socket server-sock handler]
-  (let [running? (atom true)
-        logged-base (base-middleware :logger logger)
-        full-handler (logged-base handler)]
-    (log/info! logger "listening on server socket for incoming requests...")
-    (doto (Thread.
-           (fn []
-             (log/debug! logger "request thread listening...")
-             (while @running?
-               (try
-                 (let [^Socket client (.accept server-sock)]
-                   (log/debug! logger "handling request...")
-                   (future
-                     (try (full-handler client)
-                          (catch Exception e
-                            (println (format "unexpected exception serving request: %s"
-                                             (.getMessage e)))
-                            (println (with-out-str (print-stack-trace e)))))))
-                 (catch SocketException _
-                   (log/info! logger "socket closed, shutting down listener...")
-                   (reset! running? false))
-                 (catch Exception e
-                   (log/error! logger (format "error handling request: %s\n%s"
-                                              (.getMessage e)
-                                              (with-out-str (print-stack-trace e)))))))))
-      (.start))))
+  "Listens for incoming requests on the server socket and handles them using the provided handler.
+   Uses a bounded thread pool to prevent resource exhaustion under load."
+  [{:keys [logger max-concurrent-requests]
+    :or   {max-concurrent-requests 50}} ^Socket server-sock handler]
+  (let [running?      (atom true)
+        ^ExecutorService executor (Executors/newFixedThreadPool max-concurrent-requests)
+        logged-base   (base-middleware :logger logger)
+        full-handler  (logged-base handler)]
+    (log/info! logger (format "listening on server socket for incoming requests (max %d concurrent)..."
+                              max-concurrent-requests))
+    {:thread  (doto (Thread.
+                     (fn []
+                       (log/debug! logger "request thread listening...")
+                       (while @running?
+                         (try
+                           (let [^Socket client (.accept server-sock)]
+                             (log/debug! logger "handling request...")
+                             (.submit executor
+                                      ^Runnable
+                                      (fn []
+                                        (try (full-handler client)
+                                             (catch Exception e
+                                               (println (format "unexpected exception serving request: %s"
+                                                                (.getMessage e)))
+                                               (println (with-out-str (print-stack-trace e))))))))
+                           (catch SocketException _
+                             (log/info! logger "socket closed, shutting down listener...")
+                             (reset! running? false))
+                           (catch Exception e
+                             (log/error! logger (format "error handling request: %s\n%s"
+                                                        (.getMessage e)
+                                                        (with-out-str (print-stack-trace e)))))))
+                       ;; Shutdown executor when loop exits
+                       (log/info! logger "shutting down request executor...")
+                       (.shutdown executor)
+                       (.awaitTermination executor 30 TimeUnit/SECONDS)))
+                (.start))
+     :executor executor}))
 
 (defn fold-middleware
   "Take a list of middleware functions (-> handler (-> req resp)) and return a middleware function."

@@ -27,22 +27,23 @@
                              (if (str/blank? p)
                                "."
                                p)))
-        base-path (Paths/get base
-                             (into-array String [(sanitize-subpath sub)]))
-        resolved  (.normalize base-path)]
-    (if (.startsWith resolved base-path)
+        normalized-base (.normalize (Paths/get base (into-array String [])))
+        base-path       (Paths/get base
+                                   (into-array String [(sanitize-subpath sub)]))
+        resolved        (.normalize base-path)]
+    (if (.startsWith resolved normalized-base)
       (str resolved)
       (throw (ex-info "path is not within base path!"
                       {:resolved (str resolved)
-                       :base     (str base-path)
+                       :base     (str normalized-base)
                        :type     :unauthorized-access})))))
 
 (defn get-file-contents
   "Slurp the content of a file, throwing an exception if the file doesn't exist."
   [^String filename]
   (when-not (file-accessible? filename)
-    (ex-info (format "missing file: %s" filename)
-             {:type :file-not-found}))
+    (throw (ex-info (format "missing file: %s" filename)
+                    {:type :file-not-found})))
   (slurp filename))
 
 (defn list-directory

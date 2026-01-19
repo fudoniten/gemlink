@@ -12,7 +12,9 @@
    (java.io
     BufferedReader
     InputStreamReader
-    OutputStreamWriter)))
+    OutputStreamWriter)
+   (javax.net.ssl
+    SSLPeerUnverifiedException)))
 
 (defn base-middleware
   "Basic Gemini middleware, taking a socket, reading the request, and calling the
@@ -26,14 +28,19 @@
         (log/debug! logger "streams open!")
         (try
           (.startHandshake client)
-          (let [request-line (.readLine in)
-                session      (.getSession client)
-                request      {:request-line request-line
-                              :remote-addr  (.getInetAddress client)
-                              :remote-port  (.getPort client)
-                              :local-port   (.getLocalPort client)
-                              :tls-protocol (.getProtocol session)
-                              :tls-cipher   (.getCipherSuite session)}
+          (let [request-line   (.readLine in)
+                session        (.getSession client)
+                client-certs   (try
+                                 (vec (.getPeerCertificates session))
+                                 (catch SSLPeerUnverifiedException _
+                                   nil))
+                request        {:request-line   request-line
+                                :remote-addr    (.getInetAddress client)
+                                :remote-port    (.getPort client)
+                                :local-port     (.getLocalPort client)
+                                :tls-protocol   (.getProtocol session)
+                                :tls-cipher     (.getCipherSuite session)
+                                :client-certs   client-certs}
                 response (handler request)]
             (log/info! logger (format "request: %s" request-line))
             (if-not (response? response)
@@ -57,12 +64,19 @@
             (.close client)))))))
 
 (defn parse-url
-  "Parses the request line into a URI and adds it to the request."
+  "Parses the request line into a URI and adds it to the request. Validates URL length per Gemini spec (max 1024 bytes)."
   [& {:keys [logger]}]
   (fn [handler]
     (fn [{:keys [request-line] :as req}]
       (try
+        ;; Gemini protocol spec limits URLs to 1024 bytes
+        (when (> (count request-line) 1024)
+          (throw (ex-info "url too long" {:type :url-too-long})))
         (handler (assoc req :uri (URI. (str/trim request-line))))
+        (catch clojure.lang.ExceptionInfo e
+          (if (= (:type (ex-data e)) :url-too-long)
+            (bad-request-error "url exceeds maximum length (1024 bytes)")
+            (throw e)))
         (catch URISyntaxException _
           (bad-request-error (format "invalid url: %s" request-line)))
         (catch Exception e
