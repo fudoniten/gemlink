@@ -35,23 +35,23 @@ This document tracks improvements, missing features, and enhancements for the Ge
 
 ### Test Coverage Gaps
 
-- [ ] Create test file for `handlers.clj`
-  - [ ] Test static-handler
-  - [ ] Test path-handler with file serving
-  - [ ] Test path-handler with directory listing
-  - [ ] Test users-handler
+- [x] Create test file for `handlers.clj`
+  - [x] Test static-handler
+  - [x] Test path-handler with file serving
+  - [x] Test path-handler with directory listing
+  - [x] Test users-handler
   - File: `test/gemlink/handlers_test.clj`
 
-- [ ] Create test file for `logging.clj`
-  - [ ] Test logger protocol
-  - [ ] Test print-logger implementation
-  - [ ] Test log level filtering
+- [x] Create test file for `logging.clj`
+  - [x] Test logger protocol
+  - [x] Test print-logger implementation
+  - [x] Test log level filtering
   - File: `test/gemlink/logging_test.clj`
 
-- [ ] Create test file for `path.clj` (**CRITICAL - security implications**)
-  - [ ] Test path traversal protection in `join-paths`
-  - [ ] Test file access checks
-  - [ ] Test directory listing
+- [x] Create test file for `path.clj` (**CRITICAL - security implications**)
+  - [x] Test path traversal protection in `join-paths`
+  - [x] Test file access checks
+  - [x] Test directory listing
   - [ ] Fuzz testing for path manipulation
   - File: `test/gemlink/path_test.clj`
 
@@ -75,24 +75,24 @@ This document tracks improvements, missing features, and enhancements for the Ge
 
 ### Documentation
 
-- [ ] Create LICENSE file
+- [x] Create LICENSE file
   - README mentions MIT License but file is missing
   - Add proper MIT License text
 
-- [ ] Expand README.md
-  - [ ] Add installation instructions
-  - [ ] Add quick start guide
-  - [ ] Add usage examples (basic server setup)
-  - [ ] Document configuration options
-  - [ ] Add SSL certificate setup guide
-  - [ ] Add deployment guide
-  - [ ] Add API documentation overview
+- [x] Expand README.md
+  - [x] Add installation instructions
+  - [x] Add quick start guide
+  - [x] Add usage examples (basic server setup)
+  - [x] Document configuration options
+  - [x] Add SSL certificate setup guide
+  - [x] Add deployment guide
+  - [x] Add API documentation overview
 
-- [ ] Create CONTRIBUTING.md
-  - [ ] Add contribution guidelines
-  - [ ] Code style guide
-  - [ ] Testing requirements
-  - [ ] Pull request process
+- [x] Create CONTRIBUTING.md
+  - [x] Add contribution guidelines
+  - [x] Code style guide
+  - [x] Testing requirements
+  - [x] Pull request process
 
 - [ ] Create CHANGELOG.md
   - [ ] Document version history
@@ -101,11 +101,11 @@ This document tracks improvements, missing features, and enhancements for the Ge
 
 ### Infrastructure
 
-- [ ] Add CI/CD pipeline (GitHub Actions)
-  - [ ] Run tests on all PRs
-  - [ ] Run tests on multiple OS (Linux, macOS)
-  - [ ] Check code formatting
-  - [ ] Run linter (clj-kondo)
+- [x] Add CI/CD pipeline (GitHub Actions)
+  - [x] Run tests on all PRs
+  - [x] Run tests on multiple OS (Linux, macOS)
+  - [x] Check code formatting
+  - [x] Run linter (clj-kondo)
   - [ ] Build and publish releases
   - File: `.github/workflows/ci.yml`
 
