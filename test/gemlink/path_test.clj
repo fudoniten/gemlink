@@ -206,7 +206,7 @@
           safe-file (create-temp-file temp-dir "safe.txt" "safe content")]
       (try
         ;; Create a file we'll try to access via traversal
-        (create-temp-file (str (File. temp-dir).getParent) "secret.txt" "secret")
+        (create-temp-file (str (.getParent (File. temp-dir))) "secret.txt" "secret")
 
         (testing "can access files within base"
           (let [joined (path/join-paths temp-dir "safe.txt")]
