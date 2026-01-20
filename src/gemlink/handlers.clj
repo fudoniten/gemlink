@@ -2,7 +2,7 @@
   (:require [clojure.stacktrace :refer [print-stack-trace]]
             [taoensso.timbre :as log]
 
-            [gemlink.utils :refer [generate-listing generate-listing mime-type]]
+            [gemlink.utils :refer [generate-listing mime-type]]
             [gemlink.response :refer [success not-found-error bad-request-error unknown-server-error]]
             [gemlink.path :refer [get-file-contents join-paths split-path build-path file-accessible?] :as path])
   (:import clojure.lang.ExceptionInfo))

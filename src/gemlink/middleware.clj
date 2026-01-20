@@ -18,8 +18,12 @@
 
 (defn base-middleware
   "Basic Gemini middleware, taking a socket, reading the request, and calling the
-  supplied handler."
-  [& _opts]
+  supplied handler.
+  
+  Options:
+    :close-delay-ms - Milliseconds to wait between shutdownOutput and close (default: 50).
+                      This delay allows clients to receive final data before socket closure."
+  [& {:keys [close-delay-ms] :or {close-delay-ms 50}}]
   (fn [handler]
     (fn [client]
       (log/debug "opening streams...")
@@ -60,7 +64,8 @@
           (finally
             (.flush out)
             (.shutdownOutput client)
-            (Thread/sleep 50)
+            ;; Brief delay to allow client to receive data before socket closure
+            (Thread/sleep close-delay-ms)
             (.close client)))))))
 
 (defn parse-url

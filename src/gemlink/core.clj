@@ -31,23 +31,44 @@
 
 
 (defn load-ssl-context
-  "Loads an SSL context from a keystore file using the provided password."
-  [^String keystore-path ^String password]
-  (let [ks (KeyStore/getInstance "PKCS12")]
+  "Loads an SSL context from a keystore file using the provided password.
+   
+   Options:
+     :keystore-type - Keystore format (default: \"PKCS12\"). Also supports \"JKS\", etc.
+     :tls-protocol - TLS protocol version (default: \"TLS\"). Options: \"TLSv1.2\", \"TLSv1.3\", etc.
+     :key-manager-algorithm - Algorithm for KeyManagerFactory (default: \"SunX509\")
+   
+   Examples:
+     ;; PKCS12 keystore (default)
+     (load-ssl-context \"keystore.p12\" \"password\")
+     
+     ;; JKS keystore with TLSv1.3
+     (load-ssl-context \"keystore.jks\" \"password\" :keystore-type \"JKS\" :tls-protocol \"TLSv1.3\")"
+  [^String keystore-path ^String password & {:keys [keystore-type tls-protocol key-manager-algorithm]
+                                              :or {keystore-type "PKCS12"
+                                                   tls-protocol "TLS"
+                                                   key-manager-algorithm "SunX509"}}]
+  (let [ks (KeyStore/getInstance keystore-type)]
     (with-open [ks-stream (FileInputStream. keystore-path)]
       (.load ks ks-stream (.toCharArray password)))
-    (let [factory (KeyManagerFactory/getInstance "SunX509")]
+    (let [factory (KeyManagerFactory/getInstance key-manager-algorithm)]
       (.init factory ks (.toCharArray password))
-      (doto (SSLContext/getInstance "TLS")
+      (doto (SSLContext/getInstance tls-protocol)
         (.init (.getKeyManagers factory) nil nil)))))
 
 
 (defn serve-requests
   "Listens for incoming requests on the server socket and handles them using the provided handler.
-   Uses a bounded thread pool to prevent resource exhaustion under load."
-  [{:keys [max-concurrent-requests]
-    :or   {max-concurrent-requests 50}} ^Socket server-sock handler]
+   Uses a bounded thread pool to prevent resource exhaustion under load.
+   
+   Options:
+     :max-concurrent-requests - Maximum concurrent requests (default: 50)
+     :shutdown-timeout-seconds - Time to wait for in-flight requests on shutdown (default: 30)"
+  [{:keys [max-concurrent-requests shutdown-timeout-seconds]
+    :or   {max-concurrent-requests 50
+           shutdown-timeout-seconds 30}} ^Socket server-sock handler]
   (let [running?      (atom true)
+        active-count  (atom 0)
         ^ExecutorService executor (Executors/newFixedThreadPool max-concurrent-requests)
         logged-base   (base-middleware)
         full-handler  (logged-base handler)]
@@ -63,11 +84,15 @@
                              (.submit executor
                                       ^Runnable
                                       (fn []
-                                        (try (full-handler client)
-                                             (catch Exception e
-                                               (log/error (format "unexpected exception serving request: %s"
-                                                                  (.getMessage e)))
-                                               (log/debug (with-out-str (print-stack-trace e))))))))
+                                        (swap! active-count inc)
+                                        (try
+                                          (full-handler client)
+                                          (catch Exception e
+                                            (log/error (format "unexpected exception serving request: %s"
+                                                               (.getMessage e)))
+                                            (log/debug (with-out-str (print-stack-trace e))))
+                                          (finally
+                                            (swap! active-count dec))))))
                            (catch SocketException _
                              (log/info "socket closed, shutting down listener...")
                              (reset! running? false))
@@ -76,11 +101,16 @@
                                                 (.getMessage e)
                                                 (with-out-str (print-stack-trace e)))))))
                        ;; Shutdown executor when loop exits
-                       (log/info "shutting down request executor...")
+                       (log/info (format "shutting down request executor... (%d active requests)" @active-count))
                        (.shutdown executor)
-                       (.awaitTermination executor 30 TimeUnit/SECONDS)))
+                       (if (.awaitTermination executor shutdown-timeout-seconds TimeUnit/SECONDS)
+                         (log/info "graceful shutdown completed")
+                         (do
+                           (log/warn (format "shutdown timeout exceeded, forcing shutdown (%d requests still active)" @active-count))
+                           (.shutdownNow executor)))))
                 (.start))
-     :executor executor}))
+     :executor executor
+     :active-count active-count}))
 
 (defn fold-middleware
   "Take a list of middleware functions (-> handler (-> req resp)) and return a middleware function."
@@ -131,16 +161,23 @@
       (route-matcher)))
 
 (defn start-server
-  "Starts a Gemini server on the specified port using the provided SSL context and handler."
+  "Starts a Gemini server on the specified port using the provided SSL context and handler.
+   Returns a map with:
+     :stop-chan - Channel to trigger shutdown (send any value to stop)
+     :server-info - Server information including active connection count
+   
+   To stop the server gracefully, put a value on the :stop-chan:
+     (async/put! (:stop-chan server) :stop)"
   [{:keys [ssl-context port] :as ctx} handler]
   (let [server-sock (.createServerSocket (.getServerSocketFactory ssl-context) port)
-        stop-chan (chan)]
+        stop-chan (chan)
+        server-info (serve-requests ctx server-sock handler)]
     (log/info (format "gemlink server listening on port %s" port))
-    (serve-requests ctx server-sock handler)
     (go (<! stop-chan)
         (log/info (format "shutting down gemlink listener on port %s" port))
         (try
           (.close server-sock)
           (catch Exception e
             (log/error (format "failed to close gemlink server socket: %s" (.getMessage e))))))
-    stop-chan))
+    {:stop-chan stop-chan
+     :server-info server-info}))
