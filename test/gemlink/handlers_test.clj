@@ -57,7 +57,7 @@
 
 (deftest path-handler-test
   (let [temp-dir (create-temp-dir)
-        logger (log/print-logger)]
+        logger (log/print-logger :fatal)]
     (try
       (testing "serves existing file"
         (let [content "Test file content"
@@ -105,8 +105,8 @@
                        :remaining-path [".." ".." ".." "etc" "passwd"]}
               response (handler request)]
           (is (response/response? response))
-          ;; Should return bad request or not found for security
-          (is (or (= 40 (response/get-status response))
+          ;; Should return bad request (59) or not found (51) for security
+          (is (or (= 59 (response/get-status response))
                   (= 51 (response/get-status response))))))
 
       (testing "serves index file when configured"
@@ -131,7 +131,7 @@
         (delete-recursively temp-dir)))))
 
 (deftest users-handler-test
-  (let [logger (log/print-logger)]
+  (let [logger (log/print-logger :fatal)]
     (testing "routes to correct user handler"
       (let [alice-handler (fn [req] (response/success "Alice's page"))
             bob-handler (fn [req] (response/success "Bob's page"))
@@ -193,7 +193,7 @@
 
   (testing "path handler with multiple files"
     (let [temp-dir (create-temp-dir)
-          logger (log/print-logger)]
+          logger (log/print-logger :fatal)]
       (try
         ;; Create multiple files
         (create-temp-file temp-dir "file1.txt" "Content 1")
@@ -220,7 +220,7 @@
           (delete-recursively temp-dir)))))
 
   (testing "users handler with nested user handlers"
-    (let [logger (log/print-logger)
+    (let [logger (log/print-logger :fatal)
           alice-files (create-temp-dir)]
       (try
         (create-temp-file alice-files "about.txt" "About Alice")

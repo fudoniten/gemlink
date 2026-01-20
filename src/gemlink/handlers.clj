@@ -29,18 +29,18 @@
              (log/debug! logger (format "serving file %s with mime-type %s"
                                         full-filename mime-type))
              (success file-contents :mime-type mime-type))
-           (catch ExceptionInfo e
-             (case (:type (ex-data e))
-               ::path/unauthorized-access
-               (bad-request-error "unauthorized")
+            (catch ExceptionInfo e
+              (case (:type (ex-data e))
+                :unauthorized-access
+                (bad-request-error "unauthorized")
 
-               ::path/file-not-found
-               (not-found-error)
+                :file-not-found
+                (not-found-error)
 
-               (do (log/error! logger (format "unexpected error: %s"
-                                              (.getMessage e)))
-                   (log/debug! logger (with-out-str (print-stack-trace e)))
-                   (unknown-server-error))))))))
+                (do (log/error! logger (format "unexpected error: %s"
+                                               (.getMessage e)))
+                    (log/debug! logger (with-out-str (print-stack-trace e)))
+                    (unknown-server-error))))))))
 
 (defn users-handler
   [users-handler-mapper & {:keys [logger]}]
@@ -50,5 +50,5 @@
         (do (log/debug! logger (format "serving request for user %s"
                                        user))
             (user-handler (assoc req :remaining-path
-                                 (apply build-path remaining))))
+                                 (build-path remaining))))
         (not-found-error (format "user not found: %s" user))))))

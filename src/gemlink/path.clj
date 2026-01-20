@@ -23,7 +23,7 @@
   "Given a base path and subpath, return a full path. Throw an exception if the resulting path is outside of the base path."
   [^String base ^String sub]
   (let [sanitize-subpath (fn [^String subpath]
-                           (let [p (str/replace-first subpath "^/" "")]
+                           (let [p (str/replace-first subpath #"^/" "")]
                              (if (str/blank? p)
                                "."
                                p)))

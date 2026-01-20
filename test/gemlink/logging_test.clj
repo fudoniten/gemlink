@@ -193,5 +193,5 @@
 (deftest logger-nil-message-test
   (testing "logger handles nil messages"
     (let [logger (log/print-logger :info)]
-      ;; Should not throw error
-      (is (nil? (capture-output #(log/info! logger nil)))))))
+      ;; Should not throw error and should produce no output
+      (is (= "" (capture-output #(log/info! logger nil)))))))

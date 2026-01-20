@@ -23,7 +23,8 @@
       (getLocalPort [] 12345)
       (getSession [] (proxy [javax.net.ssl.SSLSession] []
                        (getProtocol [] "TLSv1.2")
-                       (getCipherSuite [] "TLS_RSA_WITH_AES_128_CBC_SHA"))))))
+                       (getCipherSuite [] "TLS_RSA_WITH_AES_128_CBC_SHA")
+                       (getPeerCertificates [] nil))))))
 
 (deftest test-base-middleware
   (let [out-stream (ByteArrayOutputStream.)

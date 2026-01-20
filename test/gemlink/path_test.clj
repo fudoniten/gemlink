@@ -1,5 +1,6 @@
 (ns gemlink.path-test
   (:require [clojure.test :refer [deftest is testing]]
+            [clojure.string :as str]
             [gemlink.path :as path])
   (:import [java.io File]
            [java.nio.file Files]
@@ -217,9 +218,12 @@
           (is (thrown? Exception
                        (path/join-paths temp-dir "../secret.txt"))))
 
-        (testing "cannot access absolute paths outside base"
-          (is (thrown? Exception
-                       (path/join-paths temp-dir "/etc/passwd"))))
+        (testing "absolute paths are sanitized and kept within base"
+          ;; Paths like /etc/passwd get sanitized to etc/passwd relative to base
+          ;; This is safe because the normalized path check ensures it stays within base
+          (let [result (path/join-paths temp-dir "/etc/passwd")]
+            (is (string? result))
+            (is (str/starts-with? result temp-dir))))
 
         (testing "cannot use tricks like encoded dots"
           ;; The path normalization should handle these

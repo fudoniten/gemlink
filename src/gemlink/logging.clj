@@ -24,26 +24,26 @@
     (reify Logger
 
       (fatal! [_ msg]
-        (when (<= (log-index :fatal) log-idx)
-          (println msg)
-          (flush)))
+        (when (and msg (<= (log-index :fatal) log-idx))
+          (.println System/out msg)
+          (.flush System/out)))
 
       (error! [_ msg]
-        (when (<= (log-index :error) log-idx)
-          (println msg)
-          (flush)))
+        (when (and msg (<= (log-index :error) log-idx))
+          (.println System/out msg)
+          (.flush System/out)))
 
       (warn! [_ msg]
-        (when (<= (log-index :warn) log-idx)
-          (println msg)
-          (flush)))
+        (when (and msg (<= (log-index :warn) log-idx))
+          (.println System/out msg)
+          (.flush System/out)))
 
       (info! [_ msg]
-        (when (<= (log-index :info) log-idx)
-          (println msg)
-          (flush)))
+        (when (and msg (<= (log-index :info) log-idx))
+          (.println System/out msg)
+          (.flush System/out)))
 
       (debug! [_ msg]
-        (when (<= (log-index :debug) log-idx)
-          (println msg)
-          (flush))))))
+        (when (and msg (<= (log-index :debug) log-idx))
+          (.println System/out msg)
+          (.flush System/out))))))
