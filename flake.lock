@@ -134,17 +134,14 @@
         "utils": "utils_2"
       },
       "locked": {
-        "lastModified": 1765833330,
-        "narHash": "sha256-t9maMqkKfbneWRY5hVJrEMgvBF9C4eeIW4TBYA9lWnM=",
-        "owner": "fudoniten",
-        "repo": "fudo-nix-helpers",
-        "rev": "53cfad62d32a088a0ff4b29496d0927bcccb36a9",
-        "type": "github"
+        "lastModified": 1768924652,
+        "narHash": "sha256-Xv/8ZzmBMBUyMk3BBCpTcawZ73VkmlLPVMKhZnfwQj0=",
+        "path": "/net/projects/niten/nix-helpers",
+        "type": "path"
       },
       "original": {
-        "owner": "fudoniten",
-        "repo": "fudo-nix-helpers",
-        "type": "github"
+        "path": "/net/projects/niten/nix-helpers",
+        "type": "path"
       }
     },
     "nix-fetcher-data": {
