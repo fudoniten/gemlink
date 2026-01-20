@@ -120,17 +120,18 @@ This document tracks improvements, missing features, and enhancements for the Ge
 
 ### Code Quality
 
-- [ ] Remove debug code
-  - [ ] Remove or relocate `pthru` function in `utils.clj:91`
-  - Move to dev namespace or delete if unused
+- [x] Remove debug code
+  - [x] Remove or relocate `pthru` function in `utils.clj:91`
+  - Deleted unused function
 
-- [ ] Fix duplicate function reference
-  - [ ] Fix `generate-listing` listed twice in require
+- [x] Fix duplicate function reference
+  - [x] Fix `generate-listing` listed twice in require
   - File: `src/gemlink/handlers.clj:5`
 
-- [ ] Document magic numbers
-  - [ ] Document or make configurable the 50ms sleep in middleware
-  - File: `src/gemlink/middleware.clj:56`
+- [x] Document magic numbers
+  - [x] Document or make configurable the 50ms sleep in middleware
+  - Now configurable via `:close-delay-ms` parameter (default: 50)
+  - File: `src/gemlink/middleware.clj`
 
 - [ ] Fix potential infinite loop
   - [ ] Review `:seq` multimethod dispatch in `render-node`
@@ -144,25 +145,28 @@ This document tracks improvements, missing features, and enhancements for the Ge
 
 ### Architecture Improvements
 
-- [ ] Implement graceful shutdown
-  - [ ] Track active connections in `serve-requests`
-  - [ ] Wait for in-flight requests on shutdown
-  - [ ] Add configurable shutdown timeout
+- [x] Implement graceful shutdown
+  - [x] Track active connections in `serve-requests`
+  - [x] Wait for in-flight requests on shutdown
+  - [x] Add configurable shutdown timeout
+  - Tracks active request count, logs shutdown progress, configurable timeout
   - File: `src/gemlink/core.clj`
 
-- [ ] Make SSL configuration more flexible
-  - [ ] Support additional keystore formats (JKS, etc.)
-  - [ ] Allow TLS protocol version configuration
+- [x] Make SSL configuration more flexible
+  - [x] Support additional keystore formats (JKS, etc.)
+  - [x] Allow TLS protocol version configuration
   - [ ] Add custom trust manager support
   - [ ] Add cipher suite configuration
-  - File: `src/gemlink/core.clj:28-37`
+  - Supports PKCS12, JKS, configurable TLS protocol version
+  - File: `src/gemlink/core.clj:33-52`
 
-- [ ] Add configuration management
+- [x] Add configuration management
   - [ ] Add schema validation (consider malli or spec)
-  - [ ] Add default configuration values
-  - [ ] Add environment variable support
-  - [ ] Create example configuration file
-  - Consider libraries: aero, cprop
+  - [x] Add default configuration values
+  - [x] Add environment variable support
+  - [x] Create example configuration file
+  - Created `gemlink.config` namespace with env var support, EDN file loading, validation
+  - File: `src/gemlink/config.clj`, `config.example.edn`
 
 - [ ] Refactor global mutable state
   - [ ] Make `REGISTERED_EXTENSIONS` injectable
@@ -171,11 +175,12 @@ This document tracks improvements, missing features, and enhancements for the Ge
 
 ### Observability
 
-- [ ] Add structured logging
-  - [ ] Replace println with proper logging
+- [x] Add structured logging
+  - [x] Replace println with proper logging
   - [ ] Add request IDs for tracing
-  - [ ] Add log levels throughout
-  - Consider libraries: timbre, mulog
+  - [x] Add log levels throughout
+  - Migrated to Timbre, removed custom logging implementation
+  - Files: All source files now use `taoensso.timbre`
 
 - [ ] Add metrics/instrumentation
   - [ ] Track request counts
