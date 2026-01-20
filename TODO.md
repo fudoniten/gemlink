@@ -109,9 +109,9 @@ This document tracks improvements, missing features, and enhancements for the Ge
   - [ ] Build and publish releases
   - File: `.github/workflows/ci.yml`
 
-- [ ] Fix Nix configuration issues
-  - [ ] Fix nixpkgs version (currently `nixos-25.05` which doesn't exist)
-  - Should be `nixos-24.05` or `nixos-unstable`
+- [x] Fix Nix configuration issues
+  - [x] Fix nixpkgs version (updated to `nixos-25.11`)
+  - NixOS 25.11 "Xantusia" released November 30, 2025
   - File: `flake.nix:5`
 
 ---
