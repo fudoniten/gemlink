@@ -1,9 +1,9 @@
 (ns gemlink.core-test
   (:require [clojure.test :refer [deftest is testing run-tests]]
             [clojure.string :as str]
+            [taoensso.timbre :as log]
 
             [gemlink.core :refer :all]
-            [gemlink.logging :as log]
             [gemlink.middleware :refer [base-middleware]]
             [gemlink.response :refer [success bad-request-error not-authorized-error get-type get-body]])
   (:import (java.net InetAddress)
@@ -27,51 +27,48 @@
                        (getPeerCertificates [] nil))))))
 
 (deftest test-base-middleware
-  (let [out-stream (ByteArrayOutputStream.)
-        logger (log/print-logger :fatal)
-        base (base-middleware :logger logger)
-        handler (base (fn [_] (success "Hello, Gemini!")))
-        socket (mock-socket "gemini://example.com\r\n" out-stream)]
-    (testing "successfully request simple page"
-      (handler socket)
-      (let [output (.toString out-stream)
-            lines (str/split output #"\r\n")]
-        (is (= (first lines) "20 text/gemini"))
-        (is (= (second lines) "Hello, Gemini!")))))
+  (log/with-level :fatal
+    (let [out-stream (ByteArrayOutputStream.)
+          base (base-middleware)
+          handler (base (fn [_] (success "Hello, Gemini!")))
+          socket (mock-socket "gemini://example.com\r\n" out-stream)]
+      (testing "successfully request simple page"
+        (handler socket)
+        (let [output (.toString out-stream)
+              lines (str/split output #"\r\n")]
+          (is (= (first lines) "20 text/gemini"))
+          (is (= (second lines) "Hello, Gemini!")))))
 
-  (let [out-stream (ByteArrayOutputStream.)
-        logger (log/print-logger :fatal)
-        base (base-middleware :logger logger)
-        handler (base (fn [_] (bad-request-error "Invalid request")))
-        socket (mock-socket "invalid-request\r\n" out-stream)]
-    (testing "handle invalid request"
-      (handler socket)
-      (let [output (.toString out-stream)
-            lines (str/split output #"\r\n")]
-        (is (= (first lines) "59 bad request"))
-        (is (= (second lines) "Invalid request")))))
+    (let [out-stream (ByteArrayOutputStream.)
+          base (base-middleware)
+          handler (base (fn [_] (bad-request-error "Invalid request")))
+          socket (mock-socket "invalid-request\r\n" out-stream)]
+      (testing "handle invalid request"
+        (handler socket)
+        (let [output (.toString out-stream)
+              lines (str/split output #"\r\n")]
+          (is (= (first lines) "59 bad request"))
+          (is (= (second lines) "Invalid request")))))
 
-  (let [out-stream (ByteArrayOutputStream.)
-        logger (log/print-logger :fatal)
-        base (base-middleware :logger logger)
-        handler (base (fn [_] (throw (Exception. "Handler error"))))
-        socket (mock-socket "gemini://example.com\r\n" out-stream)]
-    (testing "handle handler error"
-      (handler socket)
-      (let [output (.toString out-stream)
-            lines (str/split output #"\r\n")]
-        (is (= (first lines) "40 unknown server error")))))
+    (let [out-stream (ByteArrayOutputStream.)
+          base (base-middleware)
+          handler (base (fn [_] (throw (Exception. "Handler error"))))
+          socket (mock-socket "gemini://example.com\r\n" out-stream)]
+      (testing "handle handler error"
+        (handler socket)
+        (let [output (.toString out-stream)
+              lines (str/split output #"\r\n")]
+          (is (= (first lines) "40 unknown server error")))))
 
-  (let [out-stream (ByteArrayOutputStream.)
-        logger (log/print-logger :fatal)
-        base (base-middleware :logger logger)
-        handler (base (fn [_] "Not a response"))
-        socket (mock-socket "gemini://example.com\r\n" out-stream)]
-    (testing "handle unknown handler error"
-      (handler socket)
-      (let [output (.toString out-stream)
-            lines (str/split output #"\r\n")]
-        (is (= (first lines) "40 unknown handler error"))))))
+    (let [out-stream (ByteArrayOutputStream.)
+          base (base-middleware)
+          handler (base (fn [_] "Not a response"))
+          socket (mock-socket "gemini://example.com\r\n" out-stream)]
+      (testing "handle unknown handler error"
+        (handler socket)
+        (let [output (.toString out-stream)
+              lines (str/split output #"\r\n")]
+          (is (= (first lines) "40 unknown handler error")))))))
 
 (deftest test-define-routes
   (let [matcher (-> (define-routes {} [["/test" {:handler (fn [_] :success)}]]))]

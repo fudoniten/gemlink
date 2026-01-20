@@ -1,8 +1,8 @@
 (ns gemlink.handlers-test
   (:require [clojure.test :refer [deftest is testing]]
+            [taoensso.timbre :as log]
             [gemlink.handlers :as handlers]
-            [gemlink.response :as response]
-            [gemlink.logging :as log])
+            [gemlink.response :as response])
   (:import [java.io File]
            [java.nio.file Files]
            [java.nio.file.attribute FileAttribute]
@@ -56,14 +56,13 @@
              (response/get-body (handler request2)))))))
 
 (deftest path-handler-test
-  (let [temp-dir (create-temp-dir)
-        logger (log/print-logger :fatal)]
+  (let [temp-dir (create-temp-dir)]
     (try
       (testing "serves existing file"
         (let [content "Test file content"
               file-path "test.txt"
               _ (create-temp-file temp-dir file-path content)
-              handler (handlers/path-handler temp-dir {:logger logger})
+              handler (handlers/path-handler temp-dir {})
               request {:uri (URI. (str "gemini://example.com/" file-path))
                        :remaining-path [file-path]}
               response (handler request)]
@@ -72,7 +71,7 @@
           (is (= content (response/get-body response)))))
 
       (testing "returns 404 for non-existent file"
-        (let [handler (handlers/path-handler temp-dir {:logger logger})
+        (let [handler (handlers/path-handler temp-dir {})
               request {:uri (URI. "gemini://example.com/nonexistent.txt")
                        :remaining-path ["nonexistent.txt"]}
               response (handler request)]
@@ -82,7 +81,7 @@
       (testing "detects MIME types correctly"
         (let [gmi-content "# Gemini page"
               _ (create-temp-file temp-dir "page.gmi" gmi-content)
-              handler (handlers/path-handler temp-dir {:logger logger})
+              handler (handlers/path-handler temp-dir {})
               request {:uri (URI. "gemini://example.com/page.gmi")
                        :remaining-path ["page.gmi"]}
               response (handler request)]
@@ -92,7 +91,7 @@
         (.mkdir (File. temp-dir "subdir"))
         (let [content "Nested file"
               _ (create-temp-file (str temp-dir "/subdir") "nested.txt" content)
-              handler (handlers/path-handler temp-dir {:logger logger})
+              handler (handlers/path-handler temp-dir {})
               request {:uri (URI. "gemini://example.com/subdir/nested.txt")
                        :remaining-path ["subdir" "nested.txt"]}
               response (handler request)]
@@ -100,7 +99,7 @@
           (is (= content (response/get-body response)))))
 
       (testing "prevents directory traversal"
-        (let [handler (handlers/path-handler temp-dir {:logger logger})
+        (let [handler (handlers/path-handler temp-dir {})
               request {:uri (URI. "gemini://example.com/../../../etc/passwd")
                        :remaining-path [".." ".." ".." "etc" "passwd"]}
               response (handler request)]
@@ -112,8 +111,7 @@
       (testing "serves index file when configured"
         (let [index-content "# Index Page"
               _ (create-temp-file temp-dir "index.gmi" index-content)
-              handler (handlers/path-handler temp-dir {:logger logger
-                                                       :index-file "index.gmi"})
+              handler (handlers/path-handler temp-dir {:index-file "index.gmi"})
               request {:uri (URI. "gemini://example.com/")
                        :remaining-path nil}
               response (handler request)]
@@ -121,7 +119,7 @@
           (is (= index-content (response/get-body response)))))
 
       (testing "returns 404 when no index file configured"
-        (let [handler (handlers/path-handler temp-dir {:logger logger})
+        (let [handler (handlers/path-handler temp-dir {})
               request {:uri (URI. "gemini://example.com/")
                        :remaining-path nil}
               response (handler request)]
@@ -131,13 +129,12 @@
         (delete-recursively temp-dir)))))
 
 (deftest users-handler-test
-  (let [logger (log/print-logger :fatal)]
-    (testing "routes to correct user handler"
-      (let [alice-handler (fn [req] (response/success "Alice's page"))
-            bob-handler (fn [req] (response/success "Bob's page"))
-            mapper {"alice" alice-handler
-                    "bob" bob-handler}
-            handler (handlers/users-handler mapper :logger logger)
+  (testing "routes to correct user handler"
+    (let [alice-handler (fn [req] (response/success "Alice's page"))
+          bob-handler (fn [req] (response/success "Bob's page"))
+          mapper {"alice" alice-handler
+                  "bob" bob-handler}
+          handler (handlers/users-handler mapper)
             alice-request {:uri (URI. "gemini://example.com/alice/profile")
                           :remaining-path ["alice" "profile"]}
             bob-request {:uri (URI. "gemini://example.com/bob/profile")
@@ -147,7 +144,7 @@
 
     (testing "returns 404 for non-existent user"
       (let [mapper {"alice" (fn [req] (response/success "Alice"))}
-            handler (handlers/users-handler mapper :logger logger)
+            handler (handlers/users-handler mapper )
             request {:uri (URI. "gemini://example.com/bob/profile")
                      :remaining-path ["bob" "profile"]}
             response (handler request)]
@@ -159,7 +156,7 @@
                           (reset! received-path (:remaining-path req))
                           (response/success "OK"))
             mapper {"alice" user-handler}
-            handler (handlers/users-handler mapper :logger logger)
+            handler (handlers/users-handler mapper )
             request {:uri (URI. "gemini://example.com/alice/sub/path")
                      :remaining-path ["alice" "sub" "path"]}]
         (handler request)
@@ -168,7 +165,7 @@
     (testing "handles user with no additional path"
       (let [user-handler (fn [req] (response/success "User home"))
             mapper {"alice" user-handler}
-            handler (handlers/users-handler mapper :logger logger)
+            handler (handlers/users-handler mapper )
             request {:uri (URI. "gemini://example.com/alice")
                      :remaining-path ["alice"]}
             response (handler request)]
@@ -177,12 +174,12 @@
 
     (testing "handles empty user"
       (let [mapper {"alice" (fn [req] (response/success "Alice"))}
-            handler (handlers/users-handler mapper :logger logger)
+            handler (handlers/users-handler mapper )
             request {:uri (URI. "gemini://example.com/")
                      :remaining-path []}
             response (handler request)]
         ;; Should return 404 for empty user
-        (is (= 51 (response/get-status response)))))))
+        (is (= 51 (response/get-status response))))))
 
 (deftest handler-integration-test
   (testing "static handler always returns same content"
@@ -192,15 +189,14 @@
         (is (= content (response/get-body (handler {})))))))
 
   (testing "path handler with multiple files"
-    (let [temp-dir (create-temp-dir)
-          logger (log/print-logger :fatal)]
+    (let [temp-dir (create-temp-dir)]
       (try
         ;; Create multiple files
         (create-temp-file temp-dir "file1.txt" "Content 1")
         (create-temp-file temp-dir "file2.gmi" "# Content 2")
         (create-temp-file temp-dir "file3.html" "<h1>Content 3</h1>")
 
-        (let [handler (handlers/path-handler temp-dir {:logger logger})]
+        (let [handler (handlers/path-handler temp-dir {})]
           (is (= "Content 1"
                  (response/get-body
                    (handler {:uri (URI. "gemini://example.com/file1.txt")
@@ -220,14 +216,13 @@
           (delete-recursively temp-dir)))))
 
   (testing "users handler with nested user handlers"
-    (let [logger (log/print-logger :fatal)
-          alice-files (create-temp-dir)]
+    (let [alice-files (create-temp-dir)]
       (try
         (create-temp-file alice-files "about.txt" "About Alice")
 
-        (let [alice-handler (handlers/path-handler alice-files {:logger logger})
+        (let [alice-handler (handlers/path-handler alice-files {})
               mapper {"alice" alice-handler}
-              users-handler (handlers/users-handler mapper :logger logger)
+              users-handler (handlers/users-handler mapper )
               request {:uri (URI. "gemini://example.com/alice/about.txt")
                        :remaining-path ["alice" "about.txt"]}
               response (users-handler request)]

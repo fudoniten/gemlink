@@ -4,6 +4,7 @@
         org.clojure/clojure { :mvn/version "1.12.0" }
         org.clojure/tools.cli { :mvn/version "1.1.230"}
         org.clojure/core.async { :mvn/version "1.8.741" }
+        com.taoensso/timbre {:mvn/version "6.6.1"}
 
         camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.3"}
         }

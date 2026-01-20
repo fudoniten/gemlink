@@ -4,9 +4,9 @@
    [clojure.stacktrace :refer [print-stack-trace]]
    [clojure.string :as str]
    [clojure.pprint :refer [pprint]]
+   [taoensso.timbre :as log]
 
    [gemlink.middleware :refer [base-middleware]]
-   [gemlink.logging :as log]
    [gemlink.utils :refer [cond-let parse-route-config pretty-format]]
    [gemlink.path :refer [build-path]]
    [gemlink.response :refer [not-found-error]])
@@ -45,38 +45,38 @@
 (defn serve-requests
   "Listens for incoming requests on the server socket and handles them using the provided handler.
    Uses a bounded thread pool to prevent resource exhaustion under load."
-  [{:keys [logger max-concurrent-requests]
+  [{:keys [max-concurrent-requests]
     :or   {max-concurrent-requests 50}} ^Socket server-sock handler]
   (let [running?      (atom true)
         ^ExecutorService executor (Executors/newFixedThreadPool max-concurrent-requests)
-        logged-base   (base-middleware :logger logger)
+        logged-base   (base-middleware)
         full-handler  (logged-base handler)]
-    (log/info! logger (format "listening on server socket for incoming requests (max %d concurrent)..."
-                              max-concurrent-requests))
+    (log/info (format "listening on server socket for incoming requests (max %d concurrent)..."
+                      max-concurrent-requests))
     {:thread  (doto (Thread.
                      (fn []
-                       (log/debug! logger "request thread listening...")
+                       (log/debug "request thread listening...")
                        (while @running?
                          (try
                            (let [^Socket client (.accept server-sock)]
-                             (log/debug! logger "handling request...")
+                             (log/debug "handling request...")
                              (.submit executor
                                       ^Runnable
                                       (fn []
                                         (try (full-handler client)
                                              (catch Exception e
-                                               (println (format "unexpected exception serving request: %s"
-                                                                (.getMessage e)))
-                                               (println (with-out-str (print-stack-trace e))))))))
+                                               (log/error (format "unexpected exception serving request: %s"
+                                                                  (.getMessage e)))
+                                               (log/debug (with-out-str (print-stack-trace e))))))))
                            (catch SocketException _
-                             (log/info! logger "socket closed, shutting down listener...")
+                             (log/info "socket closed, shutting down listener...")
                              (reset! running? false))
                            (catch Exception e
-                             (log/error! logger (format "error handling request: %s\n%s"
-                                                        (.getMessage e)
-                                                        (with-out-str (print-stack-trace e)))))))
+                             (log/error (format "error handling request: %s\n%s"
+                                                (.getMessage e)
+                                                (with-out-str (print-stack-trace e)))))))
                        ;; Shutdown executor when loop exits
-                       (log/info! logger "shutting down request executor...")
+                       (log/info "shutting down request executor...")
                        (.shutdown executor)
                        (.awaitTermination executor 30 TimeUnit/SECONDS)))
                 (.start))
@@ -92,35 +92,35 @@
           middlewares))
 
 (defn route-matcher
-  [{:keys [children handler middleware logger]
+  [{:keys [children handler middleware]
     :or   {middleware []}}]
   (let [mw-fn (apply fold-middleware middleware)
         pprint-str (fn [o] (with-out-str (pprint o)))
         path-handlers (into {} (map (fn [[path path-cfg]]
-                                      (log/debug! logger (format "adding route for child %s: %s"
-                                                                 path (pprint-str path-cfg)))
+                                      (log/debug (format "adding route for child %s: %s"
+                                                         path (pprint-str path-cfg)))
                                       [path (route-matcher path-cfg)])
                                     children))]
     (mw-fn
      (fn [{:keys [remaining-path] :as req}]
-       (log/debug! logger (format "routing request: %s"
-                                  (pretty-format req)))
+       (log/debug (format "routing request: %s"
+                          (pretty-format req)))
        (let [[next & rest] remaining-path]
          (cond-let [path-handler (get path-handlers next)]
-                   (do (log/debug! logger (format "matched path handler: %s" next))
+                   (do (log/debug (format "matched path handler: %s" next))
                        (path-handler (assoc req :remaining-path rest)))
 
                    [[param param-handler] (first (filter (fn [[k _]] (str/starts-with? k ":"))
                                                          path-handlers))]
                    (let [param-key (keyword (subs param 1))]
-                     (log/debug! logger (format "matched parameter: %s"
-                                                param))
+                     (log/debug (format "matched parameter: %s"
+                                        param))
                      (param-handler (-> req
                                         (assoc :remaining-path rest)
                                         (update :params assoc param-key next))))
 
                    [base-handler handler]
-                   (do (log/debug! logger (format "matched base handler"))
+                   (do (log/debug (format "matched base handler"))
                        (base-handler (assoc req :remaining-path (build-path remaining-path))))
 
                    :else (not-found-error (format "path not found"))))))))
@@ -132,15 +132,15 @@
 
 (defn start-server
   "Starts a Gemini server on the specified port using the provided SSL context and handler."
-  [{:keys [logger ssl-context port] :as ctx} handler]
+  [{:keys [ssl-context port] :as ctx} handler]
   (let [server-sock (.createServerSocket (.getServerSocketFactory ssl-context) port)
         stop-chan (chan)]
-    (log/info! logger (format "gemlink server listening on port %s" port))
+    (log/info (format "gemlink server listening on port %s" port))
     (serve-requests ctx server-sock handler)
     (go (<! stop-chan)
-        (log/info! logger (format "shutting down gemlink listener on port %s" port))
+        (log/info (format "shutting down gemlink listener on port %s" port))
         (try
           (.close server-sock)
           (catch Exception e
-            (log/error! logger (format "failed to close gemlink server socket: %s" (.getMessage e))))))
+            (log/error (format "failed to close gemlink server socket: %s" (.getMessage e))))))
     stop-chan))
