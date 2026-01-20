@@ -1,0 +1,354 @@
+# GemLink TODO List
+
+This document tracks improvements, missing features, and enhancements for the GemLink Gemini server.
+
+## Legend
+- [ ] Not started
+- [x] Completed
+
+---
+
+## High Priority
+
+### Missing Gemini Protocol Features
+- [ ] Implement status code 10/11 (input requests - sensitive/normal)
+  - Core feature for forms and user input
+  - Add query string parsing support
+  - Create response constructors for input requests
+  - File: `src/gemlink/response.clj`
+
+- [ ] Implement status code 42 (CGI error)
+  - File: `src/gemlink/response.clj`
+
+- [ ] Implement status code 44 (slow down / rate limiting)
+  - Add rate limiting middleware
+  - Track request rates per IP
+  - File: `src/gemlink/middleware.clj`
+
+- [ ] Implement status codes 60-62 (client certificate authentication)
+  - [x] Extract client certificates from SSL session (completed)
+  - [ ] Add certificate validation helpers
+  - [ ] Add certificate-required response (60)
+  - [ ] Add certificate-not-authorized response (61)
+  - [ ] Add certificate-not-valid response (62)
+  - Files: `src/gemlink/response.clj`, `src/gemlink/middleware.clj`
+
+### Test Coverage Gaps
+
+- [x] Create test file for `handlers.clj`
+  - [x] Test static-handler
+  - [x] Test path-handler with file serving
+  - [x] Test path-handler with directory listing
+  - [x] Test users-handler
+  - File: `test/gemlink/handlers_test.clj`
+
+- [x] Create test file for `logging.clj`
+  - [x] Test logger protocol
+  - [x] Test print-logger implementation
+  - [x] Test log level filtering
+  - File: `test/gemlink/logging_test.clj`
+
+- [x] Create test file for `path.clj` (**CRITICAL - security implications**)
+  - [x] Test path traversal protection in `join-paths`
+  - [x] Test file access checks
+  - [x] Test directory listing
+  - [ ] Fuzz testing for path manipulation
+  - File: `test/gemlink/path_test.clj`
+
+- [ ] Add integration tests
+  - [ ] End-to-end server tests
+  - [ ] Full request/response cycle tests
+  - [ ] SSL/TLS connection tests
+  - [ ] Client certificate authentication flow
+  - File: `test/gemlink/integration_test.clj`
+
+- [ ] Add property-based tests using test.check
+  - [ ] Route matching properties
+  - [ ] Gemtext rendering properties
+  - [ ] Path manipulation properties
+
+- [ ] Add performance/load tests
+  - [ ] Benchmark routing performance
+  - [ ] Benchmark Gemtext rendering
+  - [ ] Load testing with concurrent requests
+  - [ ] Thread pool behavior under load
+
+### Documentation
+
+- [x] Create LICENSE file
+  - README mentions MIT License but file is missing
+  - Add proper MIT License text
+
+- [x] Expand README.md
+  - [x] Add installation instructions
+  - [x] Add quick start guide
+  - [x] Add usage examples (basic server setup)
+  - [x] Document configuration options
+  - [x] Add SSL certificate setup guide
+  - [x] Add deployment guide
+  - [x] Add API documentation overview
+
+- [x] Create CONTRIBUTING.md
+  - [x] Add contribution guidelines
+  - [x] Code style guide
+  - [x] Testing requirements
+  - [x] Pull request process
+
+- [ ] Create CHANGELOG.md
+  - [ ] Document version history
+  - [ ] Track breaking changes
+  - [ ] Follow semantic versioning
+
+### Infrastructure
+
+- [x] Add CI/CD pipeline (GitHub Actions)
+  - [x] Run tests on all PRs
+  - [x] Run tests on multiple OS (Linux, macOS)
+  - [x] Check code formatting
+  - [x] Run linter (clj-kondo)
+  - [ ] Build and publish releases
+  - File: `.github/workflows/ci.yml`
+
+- [x] Fix Nix configuration issues
+  - [x] Fix nixpkgs version (updated to `nixos-25.11`)
+  - NixOS 25.11 "Xantusia" released November 30, 2025
+  - File: `flake.nix:5`
+
+---
+
+## Medium Priority
+
+### Code Quality
+
+- [x] Remove debug code
+  - [x] Remove or relocate `pthru` function in `utils.clj:91`
+  - Deleted unused function
+
+- [x] Fix duplicate function reference
+  - [x] Fix `generate-listing` listed twice in require
+  - File: `src/gemlink/handlers.clj:5`
+
+- [x] Document magic numbers
+  - [x] Document or make configurable the 50ms sleep in middleware
+  - Now configurable via `:close-delay-ms` parameter (default: 50)
+  - File: `src/gemlink/middleware.clj`
+
+- [ ] Fix potential infinite loop
+  - [ ] Review `:seq` multimethod dispatch in `render-node`
+  - Ensure `normalize-node` doesn't return sequential non-vectors
+  - File: `src/gemlink/gemtext.clj:83-85`
+
+- [ ] Improve error handling consistency
+  - [ ] Standardize on exception throwing vs error responses
+  - [ ] Document error handling patterns
+  - Create error handling guide
+
+### Architecture Improvements
+
+- [x] Implement graceful shutdown
+  - [x] Track active connections in `serve-requests`
+  - [x] Wait for in-flight requests on shutdown
+  - [x] Add configurable shutdown timeout
+  - Tracks active request count, logs shutdown progress, configurable timeout
+  - File: `src/gemlink/core.clj`
+
+- [x] Make SSL configuration more flexible
+  - [x] Support additional keystore formats (JKS, etc.)
+  - [x] Allow TLS protocol version configuration
+  - [ ] Add custom trust manager support
+  - [ ] Add cipher suite configuration
+  - Supports PKCS12, JKS, configurable TLS protocol version
+  - File: `src/gemlink/core.clj:33-52`
+
+- [x] Add configuration management
+  - [ ] Add schema validation (consider malli or spec)
+  - [x] Add default configuration values
+  - [x] Add environment variable support
+  - [x] Create example configuration file
+  - Created `gemlink.config` namespace with env var support, EDN file loading, validation
+  - File: `src/gemlink/config.clj`, `config.example.edn`
+
+- [ ] Refactor global mutable state
+  - [ ] Make `REGISTERED_EXTENSIONS` injectable
+  - [ ] Improve testability
+  - File: `src/gemlink/utils.clj:79-83`
+
+### Observability
+
+- [x] Add structured logging
+  - [x] Replace println with proper logging
+  - [ ] Add request IDs for tracing
+  - [x] Add log levels throughout
+  - Migrated to Timbre, removed custom logging implementation
+  - Files: All source files now use `taoensso.timbre`
+
+- [ ] Add metrics/instrumentation
+  - [ ] Track request counts
+  - [ ] Track request latency
+  - [ ] Track error rates
+  - [ ] Track concurrent connections
+
+- [ ] Add request tracing
+  - [ ] Generate unique request IDs
+  - [ ] Propagate request context
+  - [ ] Log request lifecycle events
+
+### Security
+
+- [ ] Add dependency vulnerability scanning
+  - [ ] Integrate OWASP dependency check
+  - [ ] Regular security audits
+  - [ ] Automated vulnerability alerts
+
+- [ ] Add security testing
+  - [ ] Fuzzing tests for path traversal
+  - [ ] Fuzzing tests for URL parsing
+  - [ ] Test certificate validation edge cases
+  - [ ] Test DoS scenarios
+
+### Gemtext DSL Enhancements
+
+- [ ] Add alt text support for preformatted blocks
+  - Support ```alt text syntax
+  - File: `src/gemlink/gemtext.clj`
+
+- [ ] Add link validation
+  - [ ] Validate URL format in links
+  - [ ] Warn on malformed links
+
+- [ ] Improve footnote system
+  - [ ] Add custom footnote numbering
+  - [ ] Allow multiple references to same footnote
+  - [ ] Make footnote flushing configurable
+  - File: `src/gemlink/gemtext.clj`
+
+---
+
+## Low Priority
+
+### Developer Experience
+
+- [ ] Enhance Nix development shell
+  - [ ] Add REPL tools to dev shell
+  - [ ] Add clj-kondo linter
+  - [ ] Add cljfmt formatter
+  - [ ] Add editor integration tools
+  - File: `flake.nix`
+
+- [ ] Add Docker support
+  - [ ] Create Dockerfile
+  - [ ] Create docker-compose for development
+  - [ ] Add container build to CI/CD
+  - [ ] Document container deployment
+
+- [ ] Create example applications
+  - [ ] Simple static site server
+  - [ ] Blog server example
+  - [ ] Dynamic content example with input
+  - [ ] User authentication example with certificates
+  - Directory: `examples/`
+
+- [ ] Add development tooling
+  - [ ] Add pre-commit hooks
+  - [ ] Add commit message linting
+  - [ ] Add automatic code formatting
+  - [ ] Add documentation generation
+
+### Documentation
+
+- [ ] Add API documentation
+  - [ ] Document all public functions with docstrings
+  - [ ] Add usage examples in docstrings
+  - [ ] Generate API docs (codox)
+
+- [ ] Create user guide
+  - [ ] Routing guide
+  - [ ] Middleware composition guide
+  - [ ] Gemtext DSL tutorial
+  - [ ] Authentication with certificates guide
+  - [ ] Static file serving guide
+
+- [ ] Add architecture documentation
+  - [ ] System design overview
+  - [ ] Data flow diagrams
+  - [ ] Security model documentation
+  - [ ] Extension points documentation
+
+### Future Enhancements
+
+- [ ] Add caching support
+  - [ ] Static file caching
+  - [ ] Response caching middleware
+  - [ ] Cache headers/TTL support
+
+- [ ] Add WebSocket-like support
+  - [ ] Investigate Gemini protocol extensions
+  - [ ] Long-running connections
+
+- [ ] Add administration interface
+  - [ ] Server statistics endpoint
+  - [ ] Health check endpoint
+  - [ ] Configuration reload
+
+- [ ] Add plugin/extension system
+  - [ ] Define extension points
+  - [ ] Plugin loading mechanism
+  - [ ] Example plugins
+
+- [ ] Performance optimizations
+  - [ ] Benchmark and profile
+  - [ ] Optimize hot paths
+  - [ ] Reduce memory allocations
+  - [ ] Consider ahead-of-time compilation (GraalVM native-image)
+
+---
+
+## Completed ✓
+
+- [x] Fix path traversal security bug in `join-paths` (src/gemlink/path.clj:33)
+- [x] Fix exception not thrown in `get-file-contents` (src/gemlink/path.clj:43-45)
+- [x] Add URL length validation (1024 byte limit per Gemini spec)
+- [x] Add client certificate extraction from SSL session
+- [x] Fix unbounded thread creation with bounded ExecutorService
+
+---
+
+## Notes
+
+### Dependency Considerations
+
+While the minimal dependency approach is commendable, consider adding:
+
+- **Schema validation**: `malli` or `clojure.spec` for configuration and data validation
+- **Configuration**: `aero` or `cprop` for better configuration management
+- **Structured logging**: `timbre` or `mulog` for production-ready logging
+- **Testing**: Already has `test.check`, but could use `kaocha` for better test runner
+
+### Breaking Changes to Consider
+
+Some improvements may require breaking changes:
+
+- Configuration format changes (if adding schema validation)
+- Response format changes (if improving error handling)
+- Middleware signature changes (if adding request context/tracing)
+
+Plan these carefully and version appropriately.
+
+### Performance Targets
+
+Before optimizing, establish baselines:
+
+- Requests per second under load
+- Memory usage patterns
+- Latency percentiles (p50, p95, p99)
+- Thread pool saturation points
+
+### Security Audit Checklist
+
+- [ ] Path traversal protections tested
+- [ ] URL parsing edge cases covered
+- [ ] Certificate validation secure
+- [ ] No information leakage in error messages
+- [ ] DoS protections in place
+- [ ] Input validation throughout
+- [ ] Dependencies free of known vulnerabilities

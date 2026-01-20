@@ -1,0 +1,19 @@
+{;; Server configuration
+ :port 1965
+ :host "0.0.0.0"
+ :max-concurrent-requests 50
+ :shutdown-timeout-seconds 30
+
+ ;; SSL configuration
+ :ssl/keystore-path "keystore.p12"
+ :ssl/keystore-password "changeme"
+ :ssl/keystore-type "PKCS12"  ;; or "JKS"
+ :ssl/tls-protocol "TLS"      ;; or "TLSv1.2", "TLSv1.3"
+ :ssl/key-manager-algorithm "SunX509"
+
+ ;; Middleware configuration
+ :middleware/close-delay-ms 50
+
+ ;; Logging configuration
+ ;; Options: :trace :debug :info :warn :error :fatal
+ :log-level :info}

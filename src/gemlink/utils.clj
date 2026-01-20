@@ -88,8 +88,6 @@
   (swap! REGISTERED_EXTENSIONS
          update ext mime-type))
 
-(defn pthru [o] (println o) o)
-
 (defn mime-type
   "Given a filename, return the best guess at a mime-type for the file."
   ([^String filename] (mime-type filename nil))
