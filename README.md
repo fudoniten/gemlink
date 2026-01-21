@@ -376,18 +376,37 @@ GemLink automatically extracts client certificates. Access them in your handler:
 
 ## Testing
 
-Run the test suite:
+Run the test suite using eftest:
 
 ```bash
-# Run all tests
-clojure -X:test
-
-# Run specific test namespace
-clojure -X:test :nss '[gemlink.core-test]'
-
-# Using Nix
-nix flake check
+# Run all tests (uses eftest for colorful, parallel execution)
+clojure -M:test
 ```
+
+Eftest provides:
+- Colorful output with progress bars
+- Parallel test execution for faster runs
+- Automatic output capturing
+- Test timing information
+
+The test suite includes 27 tests with 158 assertions covering:
+- Core server functionality
+- Gemtext DSL rendering
+- Handler behavior
+- Middleware processing
+- Path parsing and routing
+- Utility functions
+
+### Running Tests with Nix
+
+```bash
+# Build the project
+nix build
+
+# Tests are best run locally or in CI (see note below)
+```
+
+**Note**: Running tests via `nix flake check` is currently disabled because the Clojure CLI attempts dependency resolution at runtime even with locked dependencies. Tests work perfectly when run locally with `clojure -M:test` or in CI environments like GitHub Actions where network access is available.
 
 ## Project Structure
 
