@@ -26,8 +26,7 @@
           default = updateDeps;
           updateDeps = pkgs.mkShell {
             buildInputs = with helpers.packages."${system}";
-            # {} because there's no Nix-managed library deps
-              [ (updateClojureDeps { }) ];
+              [ updateClojureDeps ];
           };
         };
 
