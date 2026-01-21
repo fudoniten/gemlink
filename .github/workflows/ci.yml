@@ -44,7 +44,7 @@ jobs:
             ${{ runner.os }}-clojure-
 
       - name: Run tests
-        run: clojure -X:test
+        run: clojure -M:test
 
       - name: Test report
         if: always()
@@ -172,7 +172,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          clojure -X:test
+          clojure -M:test
           echo "Coverage report generated"
 
       - name: Report coverage summary
