@@ -134,8 +134,8 @@
         "utils": "utils_2"
       },
       "locked": {
-        "lastModified": 1768924652,
-        "narHash": "sha256-Xv/8ZzmBMBUyMk3BBCpTcawZ73VkmlLPVMKhZnfwQj0=",
+        "lastModified": 1768957527,
+        "narHash": "sha256-ysQokm/ifCD5rbuOTjid5I4PE9AJWC/RSAnBsBT6T5Y=",
         "path": "/net/projects/niten/nix-helpers",
         "type": "path"
       },
