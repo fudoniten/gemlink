@@ -42,7 +42,7 @@ git clone https://github.com/fudoniten/gemlink.git
 cd gemlink
 
 # Run tests
-clojure -X:test
+clojure -M:test
 
 # Start a REPL
 clojure -M:repl
@@ -54,11 +54,14 @@ clojure -M:repl
 # Enter development shell
 nix develop
 
-# Run tests
-nix flake check
+# Update dependencies lockfile
+nix develop -c update-deps.sh
 
 # Build package
 nix build
+
+# Verify flake (note: tests are run locally via clojure -M:test)
+nix flake check
 ```
 
 ## Making Changes
@@ -181,14 +184,11 @@ When making changes, consider:
 ### Running Tests
 
 ```bash
-# Run all tests
-clojure -X:test
+# Run all tests (uses eftest for colorful, parallel execution)
+clojure -M:test
 
-# Run specific namespace
-clojure -X:test :nss '[gemlink.path-test]'
-
-# Run with Nix
-nix flake check
+# Run with Nix (note: tests are best run locally, see README)
+nix build
 ```
 
 ### Writing Tests
@@ -237,7 +237,7 @@ All pull requests must:
 
 1. **Run tests**: Ensure all tests pass
    ```bash
-   clojure -X:test
+   clojure -M:test
    ```
 
 2. **Check formatting**: Code should follow style guidelines

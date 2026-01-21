@@ -322,7 +322,7 @@ While the minimal dependency approach is commendable, consider adding:
 - **Schema validation**: `malli` or `clojure.spec` for configuration and data validation
 - **Configuration**: `aero` or `cprop` for better configuration management
 - **Structured logging**: `timbre` or `mulog` for production-ready logging
-- **Testing**: Already has `test.check`, but could use `kaocha` for better test runner
+- **Testing**: Has `test.check` for property-based testing and `eftest` for fast, parallel test execution with beautiful output
 
 ### Breaking Changes to Consider
 
