@@ -16,7 +16,7 @@
       in {
         packages = rec {
           default = gemlink;
-          gemlink = helpers.packages."${system}".mkClojureLib {
+          gemlink = helpers.legacyPackages."${system}".mkClojureLib {
             name = "org.fudo/gemlink";
             src = ./.;
           };
@@ -25,7 +25,7 @@
         devShells = rec {
           default = updateDeps;
           updateDeps = pkgs.mkShell {
-            buildInputs = with helpers.packages."${system}";
+            buildInputs = with helpers.legacyPackages."${system}";
               [ (updateClojureDeps { }) ];
           };
         };
